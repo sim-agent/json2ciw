@@ -1,0 +1,60 @@
+{
+    "process": {
+        "name": "Call Handling Process",
+        "description": "Patient call handling process.",
+        "inter_arrival_time": {
+            "distribution": "exponential",
+            "parameters": {
+                "rate": 0.6
+            }
+        },
+        "activities": [
+            {
+                "name": "Call Triage",
+                "type": "activity",
+                "distribution": "triangular",
+                "parameters": {
+                    "min": 5,
+                    "mode": 7,
+                    "max": 10
+                },
+                "resource": {
+                    "name": "Operator",
+                    "type": "human",
+                    "number": 13
+                }
+            },
+            {
+                "name": "Nurse Consultation",
+                "type": "activity",
+                "distribution": "uniform",
+                "parameters": {
+                    "min": 10,
+                    "max": 20
+                },
+                "resource": {
+                    "name": "Nurse",
+                    "type": "human",
+                    "number": 9
+                }
+            }
+        ],
+        "transitions": [
+            {
+                "from": "Call Triage",
+                "to": "Nurse Consultation",
+                "probability": 0.4
+            },
+            {
+                "from": "Call Triage",
+                "to": "Exit",
+                "probability": 0.6
+            },
+            {
+                "from": "Nurse Consultation",
+                "to": "Exit",
+                "probability": 1
+            }
+        ]
+    }
+}
