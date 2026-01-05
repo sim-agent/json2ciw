@@ -2,7 +2,7 @@
 # Visit https://bit.ly/cffinit to generate yours today!
 
 cff-version: 1.2.0
-title: TheOpenScienceNerd - Python Repo Template
+title: DES Modeller Agent
 message: >-
   If you use this software, please cite it using the
   metadata from this file.
@@ -12,8 +12,12 @@ authors:
     family-names: Monks
     affiliation: University of Exeter
     orcid: 'https://orcid.org/0000-0003-2631-4481'
-repository-code: 'https://github.com/TheOpenScienceNerd/tosn_python_template'
+repository-code: 'https://github.com/pythonhealthdatascience/des-modeller-agent'
 keywords:
   - python
   - open science
+  - DES
+  - Large Language Models
+  - Agentic AI
+  - simulation
 license: MIT
