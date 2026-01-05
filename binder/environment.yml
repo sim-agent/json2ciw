@@ -1,14 +1,13 @@
-name: des_mod_agent
+name: json2ciw
 channels:
   - conda-forge
 dependencies:
-  - jupyterlab=4.3.5
-  - jupyterlab-plotly-extension=1.0.0
+  - jupyterlab=4.5.1
   - jupyterlab-spellchecker=0.8.4
-  - matplotlib=3.10.1
-  - numpy=2.2.3
-  - pandas=2.2.2
-  - pip=25.0.1
-  - plotly=6.0.0
-  - pmdarima=2.0.4
+  - matplotlib=3.10.8
+  - numpy=2.4.0
+  - pandas=2.3.3
+  - pip=25.3
   - python=3.12
+  - pip:
+    - ciw==3.2.7
