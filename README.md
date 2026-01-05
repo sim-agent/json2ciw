@@ -1,15 +1,10 @@
 [![ORCID: Monks](https://img.shields.io/badge/Tom_Monks_ORCID-0000--0003--2631--4481-brightgreen)](https://orcid.org/0000-0003-2631-4481)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# Title
+# DES modeller agent
 
-🎓 This tutorial aims to [INSERT].  By following the tutorial you will:
+🎓 A simple agent that converts images of patient pathways into runnable computer simulation models.
 
-* ✅ Gain ...
-* ✅ Understand ...
-* ✅ Build ...
-* 🎁 **Bonus**: ...
-* 
 ## License
 
 The materials have been made available under an [MIT license](LICENCE).  The materials are as-is with no liability for the author. Please provide credit if you reuse the code in your own work.
@@ -19,11 +14,11 @@ The materials have been made available under an [MIT license](LICENCE).  The mat
 If you reuse any of the code, or the tutorial helps you work, please provide a citation.
 
 ```bibtex
-@software{TheOpenScienceNerd_Template_
+@software{des_modeller,
 author = {Monks, Thomas},
 license = {MIT},
-title = {{TheOpenScienceNerd - [INSERT TITLE]}},
-url = {https://github.com/TheOpenScienceNerd/tosn_python_template}
+title = {{DES Modeller Agent}},
+url = {https://github.com/pythonhealthdatascience/des-modeller-agent}
 }
 ```
 
@@ -44,7 +39,7 @@ mamba env create -f binder/environment.yml
 Activate the mamba environment using the following command:
 
 ```bash
-mamba activate [INSERT]
+mamba activate des_mod_agent
 ```
 
 Run Jupyter-lab
