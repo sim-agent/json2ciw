@@ -1,4 +1,4 @@
-name: template_env
+name: des_mod_agent
 channels:
   - conda-forge
 dependencies:
@@ -12,5 +12,3 @@ dependencies:
   - plotly=6.0.0
   - pmdarima=2.0.4
   - python=3.12
-  - pip:
-    - forecast-tools==0.4.0
