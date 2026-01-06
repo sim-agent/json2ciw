@@ -32,6 +32,7 @@ def create_ciw_network(json_data: Dict[str, Any]) -> ciw.network.Network:
       probability of exiting the system. Explicit transitions to "Exit" are 
       handled by omitting them from the routing matrix.
     """
+    
     process = json_data.get('process', {})
     activities = process.get('activities', [])
     transitions = process.get('transitions', [])
@@ -74,8 +75,6 @@ def create_ciw_network(json_data: Dict[str, Any]) -> ciw.network.Network:
             # If JSON provides mean, rate = 1.0 / mean. Assuming JSON matches Ciw 'rate' here.
             rate = params.get('rate', 1.0)
             service_distributions[i] = ciw.dists.Exponential(rate=rate)
-            print("Createed an exponential")
-            print(service_distributions[i])
 
         elif dist_type == 'triangular':
             # Ciw (via Python random) typically uses (low, high, mode)
@@ -85,8 +84,6 @@ def create_ciw_network(json_data: Dict[str, Any]) -> ciw.network.Network:
                 upper=params['max'],
                 mode=params['mode']
             )
-            print("Created an triangular")
-            print(service_distributions[i])
 
 
         elif dist_type == 'uniform':
@@ -94,15 +91,10 @@ def create_ciw_network(json_data: Dict[str, Any]) -> ciw.network.Network:
                 lower=params['min'],
                 upper=params['max']
             )
-            print("Created an uniform")
-            print(service_distributions[i])
 
 
         elif dist_type == 'deterministic':
             service_distributions[i] = ciw.dists.Deterministic(value=params['value'])
-            print("Created an deterministic")
-            print(service_distributions[i])
-
 
         # -- Servers / Resources --
         # The JSON example lacks a 'capacity' field for resources.

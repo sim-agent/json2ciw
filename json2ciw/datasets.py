@@ -5,7 +5,7 @@ from pathlib import Path
 
 # arrivals -> operator service -> % nurse call back or exit -> exit
 CALL_CENTRE_FILE_NAME = "call_centre.json"
-CALL_CENTRE_PATH = Path(__file__).parent.joinpath("model", CALL_CENTRE_FILE_NAME)
+CALL_CENTRE_PATH = Path(__file__).parent.joinpath("models", CALL_CENTRE_FILE_NAME)
 
 def load_model_file(file_path: str) -> Dict[str, Any]:
     """
