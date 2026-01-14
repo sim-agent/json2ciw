@@ -1,6 +1,8 @@
 import ciw
 from typing import Dict, Any, List, Optional
 from .schema import ProcessModel
+import statistics
+import pandas as pd
 
 class CiwConverter:
     def __init__(self, model):
@@ -78,3 +80,133 @@ class CiwConverter:
         # TO DO: Add more mappings as needed (Lognormal, Gamma, etc.)
         else:
              raise ValueError(f"Unsupported distribution type for Ciw: {dist_obj.type}")
+
+def multiple_replications(
+    network: ciw.Network,
+    process_model: "ProcessModel",
+    num_reps: int = 50,
+    runtime: float = 1000.0,
+    warmup: float = 0.0
+) -> pd.DataFrame:
+    """
+    Run multiple replications of a Ciw simulation and collect performance metrics.
+
+    Executes independent replications of a discrete event simulation, collecting
+    per-node performance measures including arrivals, waiting times, service times,
+    utilisation, and queue lengths. Activity and resource names from the process
+    model are included in the output.
+
+    Parameters
+    ----------
+    network : ciw.Network
+        A configured Ciw network object defining the queueing system structure,
+        service distributions, and routing.
+    process_model : ProcessModel
+        Pydantic model containing activity and resource metadata. Used to map
+        node IDs to human-readable activity and resource names.
+    num_reps : int, default 50
+        Number of independent replications to run. Each replication uses a
+        the replication number as a random seed.
+    runtime : float, default 1000.0
+        Simulation time horizon for each replication. Units match the time
+        units used in service and arrival distributions.
+    warmup : float, default 0.0
+        Warmup period to exclude from statistics. Records with arrival times
+        before this value are filtered out to reduce initialization bias.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with one row per node per replication containing:
+        
+        - rep : int
+            Replication number (0-indexed)
+        - node_id : int
+            Ciw node identifier (1-indexed)
+        - activity_name : str
+            Name of the activity from process model
+        - resource_name : str
+            Name of the resource from process model
+        - resource_capacity : int
+            Number of servers at this node
+        - arrivals : int
+            Number of completed visits to this node
+        - mean_wait : float
+            Mean waiting time (queueing time before service)
+        - mean_service : float
+            Mean service time
+        - utilisation : float
+            Time-averaged server utilisation (fraction busy)
+        - mean_Lq : float
+            Time-averaged mean number of customers in queue
+
+    Examples
+    --------
+    >>> process_model = ProcessModel.model_validate(json_data)
+    >>> network = build_ciw_network(process_model)
+    >>> df_raw = run_replications_general(
+    ...     network, 
+    ...     process_model, 
+    ...     num_reps=100, 
+    ...     runtime=1000
+    ... )
+    >>> summary = summarise_results(df_raw)
+    """
+    # Build a mapping from node_id (1-indexed) to activity/resource info
+    node_metadata = {}
+    for idx, activity in enumerate(process_model.activities):
+        node_id = idx + 1  # Ciw uses 1-based indexing
+        node_metadata[node_id] = {
+            "activity_name": activity.name,
+            "resource_name": activity.resource.name,
+            "resource_capacity": activity.resource.capacity,
+        }
+
+    records = []
+
+    for rep in range(num_reps):
+        ciw.seed(rep)
+        Q = ciw.Simulation(network)
+        Q.simulate_until_max_time(runtime)
+
+        recs = Q.get_all_records()
+        
+        # Optional warmup filter
+        if warmup > 0:
+            recs = [r for r in recs if r.arrival_date >= warmup]
+
+        # Loop over transitive nodes (service centres)
+        for node in Q.transitive_nodes:
+            node_id = node.id_number
+            meta = node_metadata.get(node_id, {})
+
+            node_recs = [r for r in recs if r.node == node_id]
+            waits = [r.waiting_time for r in node_recs]
+            services = [r.service_time for r in node_recs]
+
+            arrivals = len(node_recs)
+            mean_wait = statistics.mean(waits) if waits else 0.0
+            mean_service = statistics.mean(services) if services else 0.0
+
+            # Ciw server_utilisation gives time-averaged busy fraction
+            util = node.server_utilisation
+
+            # Time-weighted mean number in queue (Lq)
+            horizon = runtime - warmup
+            total_wait = sum(waits)
+            mean_Lq = total_wait / horizon if horizon > 0 else 0.0
+
+            records.append({
+                "rep": rep,
+                "node_id": node_id,
+                "activity_name": meta.get("activity_name", f"Node {node_id}"),
+                "resource_name": meta.get("resource_name", "Unknown"),
+                "resource_capacity": meta.get("resource_capacity", 0),
+                "arrivals": arrivals,
+                "mean_wait": mean_wait,
+                "mean_service": mean_service,
+                "utilisation": util * 100,
+                "mean_Lq": mean_Lq,
+            })
+
+    return pd.DataFrame.from_records(records)
