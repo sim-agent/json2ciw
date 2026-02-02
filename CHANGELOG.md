@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
-## :seedling: UNRELEASED 
+## v0.2.0
+
+### Added
+
+* Function to run replications and obtain automatic results from all queues and activites in the ciw model
+* `schema`: module containing the `pydantic` classes describing a valid json `ProcessModel`
+* Convert a valid `ProcessModel` to a `mermaid` diagram.
+
+
+## :seedling: v0.1.0
 
 * Cloned from https://github.com/TheOpenScienceNerd/tosn_python_template
 
@@ -15,6 +24,6 @@ Consistent identifier (represents all versions, resolves to latest):
 
 * `json2ciw` installable Python package
 * `datasets` module for importing JSON files (no validation)
-* `engine` module for converting a valid JSON file into a ciw model. Function 
-* `tests`: testing data loading. 
+* `engine` module for converting a valid JSON file into a ciw model.
+* `tests`: testing data loading.
 
