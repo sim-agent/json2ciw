@@ -109,7 +109,7 @@ class ProcessModel(BaseModel):
             if arr_dist.type == "exponential" and "rate" in arr_dist.parameters:
                 arr_label = f"Time between arrivals<br/>Exponential(λ={arr_dist.parameters['rate']:.1f})"
             elif arr_dist.type == "exponential" and "mean" in arr_dist.parameters:
-                arr_label = f"Time between arrivals<br/>Exponential(λ={1 / arr_dist.parameters['mean']:.1f})"
+                arr_label = f"Time between arrivals<br/>Exponential(mean={arr_dist.parameters['mean']:.1f})"
             elif arr_dist.type == "triangular":
                 params = arr_dist.parameters
                 # Updated to use min/max
