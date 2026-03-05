@@ -1,5 +1,6 @@
 [![ORCID: Monks](https://img.shields.io/badge/Tom_Monks_ORCID-0000--0003--2631--4481-brightgreen)](https://orcid.org/0000-0003-2631-4481)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18879547.svg)](https://doi.org/10.5281/zenodo.18879547)
 
 # JSON to Ciw (`json2ciw`)
 
@@ -14,11 +15,15 @@ The materials have been made available under an [MIT license](LICENCE).  The mat
 If you reuse any of the code, or the tutorial helps you work, please provide a citation.
 
 ```bibtex
-@software{json2ciw_repo,
-author = {Monks, Thomas},
-license = {MIT},
-title = {{json2ciw}},
-url = {https://github.com/pythonhealthdatascience/des-modeller-agent}
+@software{json2ciw,
+  author       = {Monks, Thomas},
+  title        = {json2ciw},
+  month        = mar,
+  year         = 2026,
+  publisher    = {Zenodo},
+  version      = {v0.3.0},
+  doi          = {10.5281/zenodo.18879547},
+  url          = {https://doi.org/10.5281/zenodo.18879547},
 }
 ```
 
