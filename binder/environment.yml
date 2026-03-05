@@ -5,6 +5,7 @@ dependencies:
   - black
   - flake8
   - hatch
+  - joblib=1.5.3
   - jupyterlab=4.5.1
   - jupyterlab-spellchecker=0.8.4
   - matplotlib=3.10.8
@@ -15,5 +16,6 @@ dependencies:
   - pydantic=2.12.5
   - pytest=9.0.2
   - python=3.12
+  - rich=14.3.3
   - pip:
     - ciw==3.2.7

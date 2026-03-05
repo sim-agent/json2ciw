@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## v0.3.0
+
+### Changed
+
+* `engine.CiwConverter` can now handle "Exponential" being passed with **mean** or **rate** parameters.  If mean is passed them rate is calculated as `1/mean`.
+* `schemaa.ProcessModel.to_mermaid()` updated to handle **mean** and **rate**.
+* `engine.multiple_replications` now runs using parallel replications for `ciw` (implemented using `joblib`).
+* `pyproject.toml` and `environment.yml`updated to include `joblib` dependency.
+
+### Fixed
+
+* `pyproject.toml` updated to include missing `pydantic` dependency.
+* `environment.yml`updated to include missing `rich` dependency.
+* `call_centre.json` inter-arrival distribution fixed to use `mean` as parameter rather than `rate`.
+
 ## v0.2.0
 
 ### Added

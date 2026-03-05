@@ -12,7 +12,7 @@ authors:
     family-names: Monks
     affiliation: University of Exeter
     orcid: 'https://orcid.org/0000-0003-2631-4481'
-repository-code: 'https://github.com/pythonhealthdatascience/json2ciw'
+repository-code: 'https://github.com/sim-agent/json2ciw'
 keywords:
   - python
   - open science
