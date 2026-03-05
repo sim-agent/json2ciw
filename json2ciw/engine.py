@@ -70,7 +70,10 @@ class CiwConverter:
         p = dist_obj.parameters
         
         if dist_obj.type == "exponential":
-            return ciw.dists.Exponential(1/p["rate"])
+            if "rate" in p:
+                return ciw.dists.Exponential(p["rate"])
+            elif "mean" in p:
+                return ciw.dists.Exponential(1/p["mean"])
         elif dist_obj.type == "triangular":
             return ciw.dists.Triangular(p["min"], p["mode"], p["max"])
         elif dist_obj.type == "uniform":
