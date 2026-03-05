@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## v0.3.0
+
+### Changed
+
+* `CiwConverter` can now handle "Exponential" being passed with mean or rate parameters.  If mean is passed them rate is calculated as 1/mean.
+
 ## v0.2.0
 
 ### Added
