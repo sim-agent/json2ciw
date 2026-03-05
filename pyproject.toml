@@ -21,7 +21,7 @@ classifiers = [
 
 ]
 dependencies = [
-    "joblib>=1.5.3"
+    "joblib>=1.5.3",
     "numpy>=1.26.1", 
     "pandas>=2.0.1",
     "pydantic>=2.12.5",
