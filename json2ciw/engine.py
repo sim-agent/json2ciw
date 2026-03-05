@@ -4,6 +4,8 @@ from .schema import ProcessModel
 import statistics
 import pandas as pd
 
+from joblib import delayed, Parallel
+
 class CiwConverter:
     def __init__(self, model):
         self.model = model
@@ -89,13 +91,14 @@ def multiple_replications(
     process_model: "ProcessModel",
     num_reps: int = 50,
     runtime: float = 1000.0,
-    warmup: float = 0.0
+    warmup: float = 0.0,
+    n_jobs: int = -1,
 ) -> pd.DataFrame:
     """
     Run multiple replications of a Ciw simulation and collect performance metrics.
 
     Executes independent replications of a discrete event simulation, collecting
-    per-node performance measures including arrivals, waiting times, service times,
+    node performance measures including arrivals, waiting times, service times,
     utilisation, and queue lengths. Activity and resource names from the process
     model are included in the output.
 
@@ -116,6 +119,8 @@ def multiple_replications(
     warmup : float, default 0.0
         Warmup period to exclude from statistics. Records with arrival times
         before this value are filtered out to reduce initialization bias.
+    n_jobs: int, default -1
+        Number of cores to use for parallel replications. Use -1 for all cores.
 
     Returns
     -------
@@ -165,51 +170,138 @@ def multiple_replications(
             "resource_capacity": activity.resource.capacity,
         }
 
-    records = []
+    # Run independent replications in parallel, one per seed
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(_single_run)(
+            network=network,
+            node_metadata=node_metadata,
+            rep=rep,
+            warmup=warmup,
+            runtime=runtime,
+        )
+        for rep in range(num_reps)
 
-    for rep in range(num_reps):
-        ciw.seed(rep)
-        Q = ciw.Simulation(network)
-        Q.simulate_until_max_time(runtime)
-
-        recs = Q.get_all_records()
-        
-        # Optional warmup filter
-        if warmup > 0:
-            recs = [r for r in recs if r.arrival_date >= warmup]
-
-        # Loop over transitive nodes (service centres)
-        for node in Q.transitive_nodes:
-            node_id = node.id_number
-            meta = node_metadata.get(node_id, {})
-
-            node_recs = [r for r in recs if r.node == node_id]
-            waits = [r.waiting_time for r in node_recs]
-            services = [r.service_time for r in node_recs]
-
-            arrivals = len(node_recs)
-            mean_wait = statistics.mean(waits) if waits else 0.0
-            mean_service = statistics.mean(services) if services else 0.0
-
-            # Ciw server_utilisation gives time-averaged busy fraction
-            util = node.server_utilisation
-
-            # Time-weighted mean number in queue (Lq)
-            horizon = runtime - warmup
-            total_wait = sum(waits)
-            mean_Lq = total_wait / horizon if horizon > 0 else 0.0
-
-            records.append({
-                "rep": rep,
-                "node_id": node_id,
-                "activity_name": meta.get("activity_name", f"Node {node_id}"),
-                "resource_name": meta.get("resource_name", "Unknown"),
-                "resource_capacity": meta.get("resource_capacity", 0),
-                "arrivals": arrivals,
-                "mean_wait": mean_wait,
-                "mean_service": mean_service,
-                "utilisation": util * 100,
-                "mean_Lq": mean_Lq,
-            })
+    )
+    # Flatten list-of-lists of row dicts
+    records = [row for rep_rows in results for row in rep_rows]
 
     return pd.DataFrame.from_records(records)
+
+
+def _single_run(
+    network: ciw.Network,
+    node_metadata: dict[int, Dict[str, Any]],
+    rep: int = 0,
+    warmup: float = 0.0,
+    runtime: float = 1000.0,
+):
+    """
+    Run a single Ciw replication and aggregate node-level performance metrics.
+
+    Executes one independent replication of the queueing network, collecting
+    time-averaged and per-customer measures for each transitive node. Results
+    include arrivals, waiting times, service times, utilisation, and mean
+    queue length, with node identifiers mapped to activity and resource
+    metadata.
+
+    Parameters
+    ----------
+    network : ciw.Network
+        Configured Ciw network defining the queueing system structure,
+        service and arrival processes, and routing.
+    node_metadata : dict[int, dict]
+        Mapping from Ciw node identifiers (1-indexed) to metadata dictionaries
+        containing activity and resource information. Expected keys include
+        ``"activity_name"``, ``"resource_name"``, and ``"resource_capacity"``.
+    rep : int, optional
+        Replication index used both as an identifier in the output and as the
+        random seed for the simulation. Default is 0.
+    warmup : float, optional
+        Length of the warmup period to exclude from statistics. Records with
+        arrival times strictly less than this value are filtered out to reduce
+        initialization bias. Default is 0.0.
+    runtime : float, optional
+        Simulation time horizon for this replication. Units must match those
+        used in the arrival and service time distributions. Default is 1000.0.
+
+    Returns
+    -------
+    list[dict]
+        List of row dictionaries, one per transitive node, containing:
+        
+        - ``"rep"`` : int
+          Replication index.
+        - ``"node_id"`` : int
+          Ciw node identifier (1-indexed).
+        - ``"activity_name"`` : str
+          Human-readable activity name for this node.
+        - ``"resource_name"`` : str
+          Name of the resource associated with this node.
+        - ``"resource_capacity"`` : int
+          Number of servers at this node.
+        - ``"arrivals"`` : int
+          Number of completed visits to this node.
+        - ``"mean_wait"`` : float
+          Mean waiting time before service for completed customers.
+        - ``"mean_service"`` : float
+          Mean service time for completed customers.
+        - ``"utilisation"`` : float
+          Time-averaged server utilisation at this node, as a percentage.
+        - ``"mean_Lq"`` : float
+          Time-averaged mean number of customers in queue over the effective
+          horizon ``runtime - warmup``.
+
+    Notes
+    -----
+    The Ciw random number generators are seeded via ``ciw.seed(rep)`` to
+    ensure reproducibility of each replication. Warmup filtering is applied
+    using the arrival times of customer records, consistent with Ciw usage
+    examples.[web:39][web:48]
+    """
+    ciw.seed(rep)
+    Q = ciw.Simulation(network)
+    Q.simulate_until_max_time(runtime)
+    
+    recs = Q.get_all_records()
+    
+    # Optional warmup filter. 
+    # Ciw examples uses arrival times of entities
+    if warmup > 0:
+        recs = [r for r in recs if r.arrival_date >= warmup]
+        
+    rows = []
+    # Loop over transitive nodes (service centres)
+    for node in Q.transitive_nodes:
+        node_id = node.id_number
+        meta = node_metadata.get(node_id, {})
+
+        node_recs = [r for r in recs if r.node == node_id]
+        waits = [r.waiting_time for r in node_recs]
+        services = [r.service_time for r in node_recs]
+
+        arrivals = len(node_recs)
+        mean_wait = statistics.mean(waits) if waits else 0.0
+        mean_service = statistics.mean(services) if services else 0.0
+
+        # Ciw server_utilisation gives time-averaged busy fraction
+        util = node.server_utilisation
+
+        # Time-weighted mean number in queue (Lq)
+        horizon = runtime - warmup
+        total_wait = sum(waits)
+        mean_Lq = total_wait / horizon if horizon > 0 else 0.0
+
+        rows.append({
+            "rep": rep,
+            "node_id": node_id,
+            "activity_name": meta.get("activity_name", f"Node {node_id}"),
+            "resource_name": meta.get("resource_name", "Unknown"),
+            "resource_capacity": meta.get("resource_capacity", 0),
+            "arrivals": arrivals,
+            "mean_wait": mean_wait,
+            "mean_service": mean_service,
+            "utilisation": util * 100,
+            "mean_Lq": mean_Lq,
+            })
+        
+    return rows
