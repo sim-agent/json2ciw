@@ -1,5 +1,5 @@
 __author__ = "Tom Monks"
-__version__ = "0.4.0"
+__version__ = "0.3.0"
 
 from .datasets import load_call_centre_model, load_model_file
 from .engine import CiwConverter, multiple_replications
