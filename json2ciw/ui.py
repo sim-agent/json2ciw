@@ -6,7 +6,11 @@ import streamlit as st
 import pandas as pd
 import ciw
 from .engine import multiple_replications
-from .results import summarise_results
+from .results import (
+    summarise_results, 
+    create_user_filtered_hist,
+    tidy_to_wide_format
+)
 
 
 def _render_distribution_ui(dist, node_name, dist_type):
@@ -107,11 +111,11 @@ def render_simulation_app(default_params, model_metadata, valid_process_model=No
         # Change 1: Columns side-by-side
         col1, col2, col3 = st.columns(3)
         with col1:
-            num_reps = st.number_input("Replications", min_value=1, value=100, step=10)
+            num_reps = st.number_input("Replications", min_value=1, value=100, step=5)
         with col2:
-            warmup = st.number_input("Warm-up Time", min_value=0, value=1440, step=100)
+            warmup = st.number_input("Warm-up Time", min_value=0, value=0, step=100)
         with col3:
-            runtime = st.number_input("Run length", min_value=1, value=2880, step=100)
+            runtime = st.number_input("Run length", min_value=1, value=1440, step=100)
 
     with tab_routing:
         # Change 3: Routing Matrix in its own tab
@@ -146,10 +150,14 @@ def render_simulation_app(default_params, model_metadata, valid_process_model=No
                 
                 st.subheader("Summary Results")
                 summary = summarise_results(df_reps_tidy).round(2)
-                st.dataframe(summary, use_container_width=True)
+                st.dataframe(summary, width='stretch')
                 
+                st.subheader("Histogram of Replications")
+                df_reps_wide = tidy_to_wide_format(df_reps_tidy)
+                st.plotly_chart(create_user_filtered_hist(df_reps_wide))
+
                 with st.expander("View Detailed Replication Data"):
-                    st.dataframe(df_reps_tidy, use_container_width=True)
+                    st.dataframe(df_reps_wide, width='stretch')
                     
             except Exception as e:
                 st.error(f"Simulation Error: {str(e)}")
