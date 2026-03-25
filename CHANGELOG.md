@@ -16,6 +16,7 @@ Consistent identifier (represents all versions, resolves to latest):
 ### Changed
 
 * Added `streamlit` as package dependency.
+* Added `plotly` as package dependency.
 
 ## v0.3.0
 
