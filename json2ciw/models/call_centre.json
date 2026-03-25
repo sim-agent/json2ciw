@@ -1,6 +1,6 @@
 {
     "name": "Call Handling Process",
-    "description": "Patient call handling process.",
+    "description": "Discrete Event Simulation of a Patient call handling process.",
     "activities": [
       {
         "name": "Call Triage",
