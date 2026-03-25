@@ -12,7 +12,7 @@ def summarise_results(
     Parameters
     ----------
     df_reps : pd.DataFrame
-        Raw replication results from run_replications_general()
+        Raw tidy format replication results from multiple_replications()
     metric_name_map : dict or None, optional
         Dictionary mapping internal metric names to friendly names.
         If None, uses default friendly names. Pass False or {} to keep original names.

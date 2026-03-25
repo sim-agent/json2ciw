@@ -4,7 +4,7 @@ __version__ = "0.4.0"
 from .datasets import load_call_centre_model, load_model_file
 from .engine import CiwConverter, multiple_replications
 from .results import summarise_results
-from .interface import render_simulation_app
+from .ui import render_simulation_app
 
 # define what is exported
 __all__ = [
