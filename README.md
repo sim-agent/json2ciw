@@ -21,7 +21,7 @@ If you reuse any of the code, or the tutorial helps you work, please provide a c
   month        = mar,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.3.0},
+  version      = {v0.4.0},
   doi          = {10.5281/zenodo.18879547},
   url          = {https://doi.org/10.5281/zenodo.18879547},
 }
@@ -66,6 +66,6 @@ jupyter-lab
 ```
 
 * `binder/environment.yml` - contains the conda environment if you wish to work the models.
-* `CHANGES.md` - changelog with record of notable changes to project between versions.
+* `CHANGELOG.md` - changelog with record of notable changes to project between versions.
 * `CITATION.cff` - citation information for the code.
 * `LICENSE` - details of the MIT permissive license of this work.
