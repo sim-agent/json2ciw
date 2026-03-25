@@ -127,13 +127,13 @@ def render_simulation_app(default_params, model_metadata, valid_process_model=No
         )
         
         st.write("Edit transition probabilities below:")
-        edited_routing = st.data_editor(df_routing, key="routing_editor", use_container_width=True)
+        edited_routing = st.data_editor(df_routing, key="routing_editor", width='stretch')
         updated_params['routing'] = edited_routing.values.tolist()
 
     st.markdown("---") # Visual separator before the run button
 
     # --- MAIN PANEL: EXECUTION ---
-    if st.button("Run Simulation", type="primary", use_container_width=True):
+    if st.button("Run Simulation", type="primary" ,width='content'):
         with st.spinner(f"Running {num_reps} replications of {model_metadata.get('name', 'the model')}...") :
             try:
                 network = ciw.create_network(**updated_params)
