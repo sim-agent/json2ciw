@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## 0.4.0
+
+### Added
+
+* `json2ciw.ui` and `render_simulation_app` function to automatically create a basic streamlit dashboard interface for a json schema and `ciw` model.
+
+### Changed
+
+* Added `streamlit` as package dependency.
+* Added `plotly` as package dependency.
+
 ## v0.3.0
 
 ### Changed
