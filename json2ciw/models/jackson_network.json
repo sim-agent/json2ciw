@@ -1,0 +1,113 @@
+{
+  "name": "Open Jackson Network",
+  "description": "A simple jackson network to convert to ciw",
+  "activities": [
+    {
+      "name": "Service 1",
+      "type": "exponential",
+      "resource": {
+        "name": "Service 1 Server",
+        "capacity": 1
+      },
+      "service_distribution": {
+        "type": "exponential",
+        "parameters": {
+          "rate": 10.0
+        }
+      },
+      "arrival_distribution": {
+        "type": "exponential",
+        "parameters": {
+          "rate": 1.0
+        }
+      }
+    },
+    {
+      "name": "Service 2",
+      "type": "exponential",
+      "resource": {
+        "name": "Service 2 Servers",
+        "capacity": 2
+      },
+      "service_distribution": {
+        "type": "exponential",
+        "parameters": {
+          "rate": 10.0
+        }
+      },
+      "arrival_distribution": {
+        "type": "exponential",
+        "parameters": {
+          "rate": 4.0
+        }
+      }
+    },
+    {
+      "name": "Service 3",
+      "type": "exponential",
+      "resource": {
+        "name": "Service 3 Server",
+        "capacity": 1
+      },
+      "service_distribution": {
+        "type": "exponential",
+        "parameters": {
+          "rate": 10.0
+        }
+      },
+      "arrival_distribution": {
+        "type": "exponential",
+        "parameters": {
+          "rate": 3.0
+        }
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "source": "Service 1",
+      "target": "Exit",
+      "probability": 0.1
+    },
+    {
+      "source": "Service 1",
+      "target": "Service 2",
+      "probability": 0.6
+    },
+    {
+      "source": "Service 1",
+      "target": "Service 3",
+      "probability": 0.3
+    },
+    {
+      "source": "Service 2",
+      "target": "Exit",
+      "probability": 0.6
+    },
+    {
+      "source": "Service 2",
+      "target": "Service 1",
+      "probability": 0.1
+    },
+    {
+      "source": "Service 2",
+      "target": "Service 3",
+      "probability": 0.3
+    },
+    {
+      "source": "Service 3",
+      "target": "Exit",
+      "probability": 0.2
+    },
+    {
+      "source": "Service 3",
+      "target": "Service 2",
+      "probability": 0.4
+    },
+    {
+      "source": "Service 3",
+      "target": "Service 1",
+      "probability": 0.4
+    }
+  ]
+}
