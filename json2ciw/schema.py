@@ -133,6 +133,8 @@ class ProcessModel(BaseModel):
             serv_dist = activity.service_distribution
             if serv_dist.type == "exponential" and "rate" in serv_dist.parameters:
                 dist_info = f"Exp(λ={serv_dist.parameters['rate']:.1f})"
+            elif serv_dist.type == "exponential" and "mean" in serv_dist.parameters:
+                dist_info = f"Exp(mean={serv_dist.parameters['mean']:.1f})"
             elif serv_dist.type == "triangular":
                 params = serv_dist.parameters
                 dist_info = f"Tri({params.get('min', 0)}, {params.get('mode', 0)}, {params.get('max', 0)})"

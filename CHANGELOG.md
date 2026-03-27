@@ -12,6 +12,7 @@ Consistent identifier (represents all versions, resolves to latest):
 ### Fixed
 
 * Included missing distribution type in `json2ciw` app sidebar.
+* Service distribution now displays mean parameter for the exponential distribution.
 
 ## 0.5.0
 

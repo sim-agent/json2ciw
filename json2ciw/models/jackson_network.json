@@ -12,7 +12,7 @@
       "service_distribution": {
         "type": "exponential",
         "parameters": {
-          "rate": 10.0
+          "mean": 0.1
         }
       },
       "arrival_distribution": {
@@ -32,7 +32,7 @@
       "service_distribution": {
         "type": "exponential",
         "parameters": {
-          "rate": 10.0
+          "mean": 0.1
         }
       },
       "arrival_distribution": {
@@ -52,7 +52,7 @@
       "service_distribution": {
         "type": "exponential",
         "parameters": {
-          "rate": 10.0
+          "mean": 0.1
         }
       },
       "arrival_distribution": {
