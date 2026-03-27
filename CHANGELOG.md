@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## 0.6.0
+
+## Changed
+
+* `schema.Distribution` now supports "lognormal" with sample mean and std along with "gamma" (shape, scale)
+* `engine.CiwConverter` updated to handle `ciw` lognormal and gamma distributions. Lognormal parameters converted to mu and sigma of underlying normal.
+
+### Fixed
+
+* Included missing distribution type in `json2ciw` app sidebar.
+* Service distribution now displays mean parameter for the exponential distribution.
+
 ## 0.5.0
 
 ### Added

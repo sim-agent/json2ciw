@@ -20,6 +20,8 @@ def _render_distribution_ui(dist, node_name, dist_type):
     
     dist_class = type(dist).__name__
     
+    st.sidebar.markdown(f"*{dist_class}*")
+
     # Render different inputs based on the distribution class
     if dist_class == "Exponential":
         rate = st.sidebar.number_input(
