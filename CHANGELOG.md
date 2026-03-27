@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## 0.5.0
+
+### Added
+
+* `datasets.load_jackson_network_model()` to load a open jackson network model in JSON format to convert into a `ProcessModel`
+* `ProcessModel` has new methods `get_distributions_df` and `get_routing_matrix_df` to help with face validation of model.
+  
+### Changed
+
+* `app.py` updated the app to switch dynamically between models.
+
 ## 0.4.0
 
 ### Added

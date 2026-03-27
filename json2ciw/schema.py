@@ -12,6 +12,7 @@ from typing import List, Literal, Dict, Optional, Set
 from pydantic import BaseModel, Field, model_validator
 from collections import defaultdict
 from IPython.display import Markdown, display
+import pandas as pd
 
 class Distribution(BaseModel):
     type: Literal["exponential", "triangular", "uniform", "deterministic"]
@@ -204,6 +205,48 @@ class ProcessModel(BaseModel):
             if self.description:
                 f.write(f"{self.description}\n\n")
             f.write(mermaid_code)
+
+    def get_distributions_df(self) -> pd.DataFrame:
+        """Returns a DataFrame of all arrival and service distributions."""
+        records = []
+        for activity in self.activities:
+            # Arrival distribution
+            if activity.arrival_distribution:
+                arr = activity.arrival_distribution
+                records.append({
+                    "Activity": activity.name,
+                    "Phase": "Arrival",
+                    "Distribution Type": arr.type.capitalize(),
+                    "Parameters": ", ".join(f"{k}={v}" for k, v in arr.parameters.items())
+                })
+            
+            # Service distribution
+            srv = activity.service_distribution
+            records.append({
+                "Activity": activity.name,
+                "Phase": "Service",
+                "Distribution Type": srv.type.capitalize(),
+                "Parameters": ", ".join(f"{k}={v}" for k, v in srv.parameters.items())
+            })
+            
+        return pd.DataFrame(records)
+
+    def get_routing_matrix_df(self) -> pd.DataFrame:
+        """Returns a DataFrame representing the transition probability matrix."""
+        # Sources are activities; targets include activities and the Exit node
+        activities = [a.name for a in self.activities]
+        targets = activities + ["Exit"]
+        
+        # Initialize matrix with zeros
+        matrix = pd.DataFrame(0.0, index=activities, columns=targets)
+        matrix.index.name = "Source Activity"
+        
+        # Populate probabilities
+        for t in self.transitions:
+            if t.source in matrix.index and t.target in matrix.columns:
+                matrix.at[t.source, t.target] = t.probability
+                
+        return matrix
 
 
 
