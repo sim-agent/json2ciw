@@ -65,48 +65,48 @@
   ],
   "transitions": [
     {
-      "source": "Service 1",
-      "target": "Exit",
+      "from": "Service 1",
+      "to": "Exit",
       "probability": 0.1
     },
     {
-      "source": "Service 1",
-      "target": "Service 2",
+      "from": "Service 1",
+      "to": "Service 2",
       "probability": 0.6
     },
     {
-      "source": "Service 1",
-      "target": "Service 3",
+      "from": "Service 1",
+      "to": "Service 3",
       "probability": 0.3
     },
     {
-      "source": "Service 2",
-      "target": "Exit",
+      "from": "Service 2",
+      "to": "Exit",
       "probability": 0.6
     },
     {
-      "source": "Service 2",
-      "target": "Service 1",
+      "from": "Service 2",
+      "to": "Service 1",
       "probability": 0.1
     },
     {
-      "source": "Service 2",
-      "target": "Service 3",
+      "from": "Service 2",
+      "to": "Service 3",
       "probability": 0.3
     },
     {
-      "source": "Service 3",
-      "target": "Exit",
+      "from": "Service 3",
+      "to": "Exit",
       "probability": 0.2
     },
     {
-      "source": "Service 3",
-      "target": "Service 2",
+      "from": "Service 3",
+      "to": "Service 2",
       "probability": 0.4
     },
     {
-      "source": "Service 3",
-      "target": "Service 1",
+      "from": "Service 3",
+      "to": "Service 1",
       "probability": 0.4
     }
   ]
