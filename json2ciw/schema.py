@@ -6,34 +6,37 @@ compatible with the Ciw library. It includes validation logic for network topolo
 and transition probabilities, as well as functionality to generate Mermaid
 flowcharts for visual verification of the model structure.
 """
-
-
 from typing import List, Literal, Dict, Optional, Set
 from pydantic import BaseModel, Field, model_validator
 from collections import defaultdict
 from IPython.display import Markdown, display
 import pandas as pd
 
+
 class Distribution(BaseModel):
-    type: Literal["exponential", "triangular", "uniform", "deterministic"]
+    # ADDED: lognormal and gamma
+    type: Literal["exponential", "triangular", "uniform", "deterministic", "lognormal", "gamma"]
     parameters: Dict[str, float]
+
 
 class Resource(BaseModel):
     name: str
     capacity: int = Field(..., gt=0)
+
 
 class Activity(BaseModel):
     name: str
     type: str
     resource: Resource
     service_distribution: Distribution
-    # Optional because not all nodes have arrivals
     arrival_distribution: Optional[Distribution] = None
+
 
 class Transition(BaseModel):
     source: str = Field(..., alias="from")
     target: str = Field(..., alias="to")
     probability: float = Field(..., ge=0.0, le=1.0)
+
 
 class ProcessModel(BaseModel):
     name: str
@@ -46,7 +49,6 @@ class ProcessModel(BaseModel):
         activity_names: Set[str] = {a.name for a in self.activities}
         allowed_targets = activity_names | {"Exit"}
 
-        # 1) Validate references + accumulate outgoing probs per source
         probs_by_source = defaultdict(float)
 
         for t in self.transitions:
@@ -56,7 +58,6 @@ class ProcessModel(BaseModel):
                 raise ValueError(f"Transition 'to' unknown target: {t.target}")
             probs_by_source[t.source] += t.probability
 
-        # 2) Require every activity to have an outgoing total of exactly 1.0
         tol = 1e-9
         missing_sources = []
         bad_sums = []
@@ -81,105 +82,96 @@ class ProcessModel(BaseModel):
                 f"problems: {details}"
             )
 
-        print("Transitions sum to 1.0 for all activities.")
-
         return self
     
     def to_mermaid(self) -> str:
         """Convert the process model to Mermaid flowchart syntax."""
         lines = ["```mermaid", "graph TD"]
         
-        # Add title as a comment
         if self.description:
             lines.append(f"    %% {self.name}: {self.description}")
         
-        # Helper function to create valid node IDs (no spaces)
         def make_node_id(name: str) -> str:
             return name.replace(" ", "_").replace("-", "_")
         
-        # Find activities with arrivals (entry points)
         entry_activities = [a for a in self.activities if a.arrival_distribution]
         
-        # Create arrival source nodes
         for activity in entry_activities:
             node_id = make_node_id(activity.name)
             arrival_id = f"Arrivals_{node_id}"
             
             arr_dist = activity.arrival_distribution
-            # Use <br/> for line breaks
-            if arr_dist.type == "exponential" and "rate" in arr_dist.parameters:
-                arr_label = f"Time between arrivals<br/>Exponential(λ={arr_dist.parameters['rate']:.1f})"
-            elif arr_dist.type == "exponential" and "mean" in arr_dist.parameters:
-                arr_label = f"Time between arrivals<br/>Exponential(mean={arr_dist.parameters['mean']:.1f})"
+            p = arr_dist.parameters
+            
+            if arr_dist.type == "exponential" and "rate" in p:
+                arr_label = f"Time between arrivals<br/>Exponential(λ={p['rate']:.1f})"
+            elif arr_dist.type == "exponential" and "mean" in p:
+                arr_label = f"Time between arrivals<br/>Exponential(mean={p['mean']:.1f})"
             elif arr_dist.type == "triangular":
-                params = arr_dist.parameters
-                # Updated to use min/max
-                arr_label = f"Time between arrivals<br/>Triangular({params.get('min', 0)}, {params.get('mode', 0)}, {params.get('max', 0)})"
+                arr_label = f"Time between arrivals<br/>Triangular({p.get('min', 0)}, {p.get('mode', 0)}, {p.get('max', 0)})"
             elif arr_dist.type == "uniform":
-                params = arr_dist.parameters
-                # Updated to use min/max
-                arr_label = f"Time between arrivals<br/>Uniform({params.get('min', 0)}, {params.get('max', 0)})"
-            elif arr_dist.type == "deterministic" and "value" in arr_dist.parameters:
-                arr_label = f"Time between arrivals<br/>Deterministic({arr_dist.parameters['value']})"
+                arr_label = f"Time between arrivals<br/>Uniform({p.get('min', 0)}, {p.get('max', 0)})"
+            elif arr_dist.type == "deterministic" and "value" in p:
+                arr_label = f"Time between arrivals<br/>Deterministic({p['value']})"
+            # ADDED: lognormal and gamma formatting
+            elif arr_dist.type == "lognormal":
+                arr_label = f"Time between arrivals<br/>Lognormal(mean={p.get('mean', 0)}, stdev={p.get('stdev', 0)})"
+            elif arr_dist.type == "gamma":
+                arr_label = f"Time between arrivals<br/>Gamma(shape={p.get('shape', 0)}, scale={p.get('scale', 0)})"
             else:
                 arr_label = f"Time between arrivals<br/>{arr_dist.type}"
             
             lines.append(f'    {arrival_id}("{arr_label}")')
         
-        # Define activity nodes
         for activity in self.activities:
             node_id = make_node_id(activity.name)
             
             serv_dist = activity.service_distribution
-            if serv_dist.type == "exponential" and "rate" in serv_dist.parameters:
-                dist_info = f"Exp(λ={serv_dist.parameters['rate']:.1f})"
-            elif serv_dist.type == "exponential" and "mean" in serv_dist.parameters:
-                dist_info = f"Exp(mean={serv_dist.parameters['mean']:.1f})"
+            p = serv_dist.parameters
+            
+            if serv_dist.type == "exponential" and "rate" in p:
+                dist_info = f"Exp(λ={p['rate']:.1f})"
+            elif serv_dist.type == "exponential" and "mean" in p:
+                dist_info = f"Exp(mean={p['mean']:.1f})"
             elif serv_dist.type == "triangular":
-                params = serv_dist.parameters
-                dist_info = f"Tri({params.get('min', 0)}, {params.get('mode', 0)}, {params.get('max', 0)})"
+                dist_info = f"Tri({p.get('min', 0)}, {p.get('mode', 0)}, {p.get('max', 0)})"
             elif serv_dist.type == "uniform":
-                params = serv_dist.parameters
-                dist_info = f"Uniform({params.get('min', 0)}, {params.get('max', 0)})"
-            elif serv_dist.type == "deterministic" and "value" in serv_dist.parameters:
-                dist_info = f"Det({serv_dist.parameters['value']})"
+                dist_info = f"Uniform({p.get('min', 0)}, {p.get('max', 0)})"
+            elif serv_dist.type == "deterministic" and "value" in p:
+                dist_info = f"Det({p['value']})"
+            # ADDED: lognormal and gamma formatting
+            elif serv_dist.type == "lognormal":
+                dist_info = f"Lognormal(mean={p.get('mean', 0)}, stdev={p.get('stdev', 0)})"
+            elif serv_dist.type == "gamma":
+                dist_info = f"Gamma(shape={p.get('shape', 0)}, scale={p.get('scale', 0)})"
             else:
                 dist_info = serv_dist.type
             
-            # Removed resource name from here. Using <br/> for line break.
             label = f"{activity.name}<br/>{dist_info}"
-            
             lines.append(f'    {node_id}["{label}"]')
         
-        # Add resource nodes (circles) with capacity
         seen_resources = set()
         for activity in self.activities:
             if activity.resource.name not in seen_resources:
                 resource_id = make_node_id(f"Resource_{activity.resource.name}")
-                # Added capacity to label here: Name\n(Capacity)
                 res_label = f"{activity.resource.name}<br/>({activity.resource.capacity})"
                 lines.append(f'    {resource_id}(("{res_label}"))')
                 seen_resources.add(activity.resource.name)
         
-        # Add Exit node
         lines.append('    Exit(["Exit"])')
         lines.append("")
         
-        # Connections
-        # 1. Arrival -> Activity
         for activity in entry_activities:
             node_id = make_node_id(activity.name)
             arrival_id = f"Arrivals_{node_id}"
             lines.append(f'    {arrival_id} --> {node_id}')
         
-        # 2. Resource -> Activity (Seize/Release)
         for activity in self.activities:
             node_id = make_node_id(activity.name)
             resource_id = make_node_id(f"Resource_{activity.resource.name}")
             lines.append(f'    {resource_id} -.Seize.-> {node_id}')
             lines.append(f'    {node_id} -.Release.-> {resource_id}')
         
-        # 3. Transitions
         for transition in self.transitions:
             source_id = make_node_id(transition.source)
             target_id = make_node_id(transition.target) if transition.target != "Exit" else "Exit"
@@ -193,14 +185,11 @@ class ProcessModel(BaseModel):
         lines.append("```")
         return "\n".join(lines)
 
-
     def display_diagram(self):
-        """Display the Mermaid diagram in Jupyter notebook."""
         mermaid_code = self.to_mermaid()
         display(Markdown(mermaid_code))
         
     def save_diagram(self, filename: str):
-        """Save the Mermaid diagram to a markdown file."""
         mermaid_code = self.to_mermaid()
         with open(filename, 'w') as f:
             f.write(f"# {self.name}\n\n")
@@ -209,10 +198,8 @@ class ProcessModel(BaseModel):
             f.write(mermaid_code)
 
     def get_distributions_df(self) -> pd.DataFrame:
-        """Returns a DataFrame of all arrival and service distributions."""
         records = []
         for activity in self.activities:
-            # Arrival distribution
             if activity.arrival_distribution:
                 arr = activity.arrival_distribution
                 records.append({
@@ -222,7 +209,6 @@ class ProcessModel(BaseModel):
                     "Parameters": ", ".join(f"{k}={v}" for k, v in arr.parameters.items())
                 })
             
-            # Service distribution
             srv = activity.service_distribution
             records.append({
                 "Activity": activity.name,
@@ -234,21 +220,15 @@ class ProcessModel(BaseModel):
         return pd.DataFrame(records)
 
     def get_routing_matrix_df(self) -> pd.DataFrame:
-        """Returns a DataFrame representing the transition probability matrix."""
-        # Sources are activities; targets include activities and the Exit node
         activities = [a.name for a in self.activities]
         targets = activities + ["Exit"]
-        
-        # Initialize matrix with zeros
         matrix = pd.DataFrame(0.0, index=activities, columns=targets)
         matrix.index.name = "Source Activity"
         
-        # Populate probabilities
         for t in self.transitions:
             if t.source in matrix.index and t.target in matrix.columns:
                 matrix.at[t.source, t.target] = t.probability
                 
         return matrix
-
 
 

@@ -1,5 +1,6 @@
 import ciw
-from typing import Dict, Any, List, Optional
+import math
+from typing import Dict, Any, List, Optional, Tuple
 from .schema import ProcessModel
 import statistics
 import pandas as pd
@@ -66,6 +67,18 @@ class CiwConverter:
             "service_distributions": service_distributions,
             "routing": routing
         }
+    
+    def _normal_moments_from_lognormal(self, m: float, v: float) -> Tuple[float, float]:
+        """
+        Calculate mu and sigma of the normal distribution underlying
+        a lognormal with mean m and variance v.
+
+        Note: TM added (from sim-tools) 0.6.0
+        """
+        phi = math.sqrt(v + m**2)
+        mu = math.log(m**2 / phi)
+        sigma = math.sqrt(math.log(phi**2 / m**2))
+        return mu, sigma
 
     def _make_ciw_dist(self, dist_obj):
         """Helper to convert Pydantic Distribution model to Ciw Object"""
@@ -82,7 +95,15 @@ class CiwConverter:
             return ciw.dists.Uniform(p["min"], p["max"])
         elif dist_obj.type == "deterministic":
              return ciw.dists.Deterministic(p["value"])
-        # TO DO: Add more mappings as needed (Lognormal, Gamma, etc.)
+        # ADDED 0.6.0: Lognormal mapping with math conversion
+        elif dist_obj.type == "lognormal":
+             m = p["mean"]
+             v = p["stdev"] ** 2
+             mu, sigma = self._normal_moments_from_lognormal(m, v)
+             return ciw.dists.Lognormal(mean=mu, standard_deviation=sigma)
+        # ADDED 0.6.0: Gamma mapping
+        elif dist_obj.type == "gamma":
+             return ciw.dists.Gamma(shape=p["shape"], scale=p["scale"])
         else:
              raise ValueError(f"Unsupported distribution type for Ciw: {dist_obj.type}")
 
