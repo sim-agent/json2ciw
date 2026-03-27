@@ -21,7 +21,7 @@ If you reuse any of the code, or the tutorial helps you work, please provide a c
   month        = mar,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.4.0},
+  version      = {v0.5.0},
   doi          = {10.5281/zenodo.18879547},
   url          = {https://doi.org/10.5281/zenodo.18879547},
 }
