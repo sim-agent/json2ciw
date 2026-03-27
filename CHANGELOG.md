@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## 0.5.1
+
+### Fixed
+
+* Included missing distribution type in `json2ciw` app sidebar.
+
 ## 0.5.0
 
 ### Added
