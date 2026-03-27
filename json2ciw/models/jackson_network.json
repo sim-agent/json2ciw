@@ -6,7 +6,7 @@
       "name": "Service 1",
       "type": "exponential",
       "resource": {
-        "name": "Service 1 Server",
+        "name": "Servers 1",
         "capacity": 1
       },
       "service_distribution": {
@@ -26,7 +26,7 @@
       "name": "Service 2",
       "type": "exponential",
       "resource": {
-        "name": "Service 2 Servers",
+        "name": "Servers 2",
         "capacity": 2
       },
       "service_distribution": {
@@ -46,7 +46,7 @@
       "name": "Service 3",
       "type": "exponential",
       "resource": {
-        "name": "Service 3 Server",
+        "name": "Servers 3",
         "capacity": 1
       },
       "service_distribution": {
