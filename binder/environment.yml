@@ -13,7 +13,7 @@ dependencies:
   - numpy=2.4.0
   - pandas=2.3.3
   - pip=25.3
-  - plotly
+  - plotly=6.6.0
   - pydantic=2.12.5
   - pytest=9.0.2
   - python=3.12

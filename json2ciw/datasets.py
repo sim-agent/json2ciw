@@ -7,6 +7,10 @@ from pathlib import Path
 CALL_CENTRE_FILE_NAME = "call_centre.json"
 CALL_CENTRE_PATH = Path(__file__).parent.joinpath("models", CALL_CENTRE_FILE_NAME)
 
+# classic open jackson network example
+JACKSON_NETWORK_FILE_NAME = "jackson_network.json"
+JACKSON_NETWORK_PATH = Path(__file__).parent.joinpath("models", JACKSON_NETWORK_FILE_NAME)
+
 def load_model_file(file_path: str) -> Dict[str, Any]:
     """
     Load a JSON specification for a call centre model from a file.
@@ -57,3 +61,27 @@ def load_call_centre_model() -> Dict[str, Any]:
         If there are permissions issues or other I/O errors opening the file.
     """
     return load_model_file(CALL_CENTRE_PATH)
+
+
+def load_jackson_network_model() -> Dict[str, Any]:
+    """
+    Load a JSON specification for a classic open jackson network
+    problem from file.
+
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary containing the parsed JSON data. The keys are strings
+        representing configuration fields (e.g., "process", "activities") 
+        and values are the corresponding model parameters.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file specified by `file_path` cannot be found.
+    json.JSONDecodeError
+        If the file content is not valid JSON.
+    OSError
+        If there are permissions issues or other I/O errors opening the file.
+    """
+    return load_model_file(JACKSON_NETWORK_PATH)
