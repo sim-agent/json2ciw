@@ -68,7 +68,8 @@ class CiwConverter:
             "routing": routing
         }
     
-    def _normal_moments_from_lognormal(self, m: float, v: float) -> Tuple[float, float]:
+    @staticmethod
+    def _normal_moments_from_lognormal(m: float, v: float) -> Tuple[float, float]:
         """
         Calculate mu and sigma of the normal distribution underlying
         a lognormal with mean m and variance v.
@@ -96,7 +97,7 @@ class CiwConverter:
                 return params[alias]
          
         # throw exception if sd not supplied
-        err_msg = f"{dist_obj.type} is type {dist_obj.type} and requires a" \
+        err_msg = f"{dist_obj.name} is type {dist_obj.type} and requires a" \
             + "standard deviation param. None provided. Please review distributions."
         raise AttributeError(err_msg)
             
@@ -120,7 +121,7 @@ class CiwConverter:
         elif dist_obj.type == "lognormal":
              m = p["mean"]
              v = self._extract_std(dist_obj, p) ** 2
-             mu, sigma = self._normal_moments_from_lognormal(m, v)
+             mu, sigma = CiwConverter._normal_moments_from_lognormal(m, v)
              # 0.7.0 fixed param: "standard_deviation" should be "sd"
              return ciw.dists.Lognormal(mean=mu, sd=sigma)
         # ADDED 0.6.0: Gamma mapping

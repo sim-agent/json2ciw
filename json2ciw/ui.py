@@ -5,7 +5,7 @@ Convert a valid JSON and Ciw network model to a streamlit user interface
 import streamlit as st
 import pandas as pd
 import ciw
-from .engine import multiple_replications
+from .engine import multiple_replications, CiwConverter
 from .results import (
     summarise_results, 
     create_user_filtered_hist,
@@ -51,7 +51,10 @@ def _render_distribution_ui(dist, node_name, dist_type):
         col1, col2 = st.sidebar.columns(2)
         mean = col1.number_input("mean", value=float(dist.mean), key=f"{dist_type}_ul_{node_name}")
         sd = col2.number_input("sd", value=float(dist.sd), key=f"{dist_type}_uu_{node_name}")
-        return type(dist)(mean=mean, sd=sd)
+
+        # convert to mu sigma of the undelying normal
+        mu, sigma = CiwConverter._normal_moments_from_lognormal(mean, sd)
+        return type(dist)(mean=mu, sd=sigma)
     
     # ADDED: v0.7.0
     elif dist_class == "Normal":
@@ -115,6 +118,8 @@ def render_simulation_app(default_params, model_metadata, valid_process_model=No
         if srv_dist_data is not None:
             st.sidebar.markdown(f"**Service Distribution**")
         srv_dist = _render_distribution_ui(srv_dist_data, node_name, "Service")
+        
+        # need to account for distributions like the lognormal requiring conversion
         updated_params['service_distributions'].append(srv_dist)
         
         st.sidebar.divider()
