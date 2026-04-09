@@ -12,6 +12,7 @@ Consistent identifier (represents all versions, resolves to latest):
 ### Added 
 
 * `three_node_network.json`: example that modifies the basic jackson network and uses lognormal and normal service distributions in v0.7.0 
+* `example_app.py`: added three node example  
 
 ### Changed
 
