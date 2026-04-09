@@ -14,7 +14,7 @@ import pandas as pd
 
 
 class Distribution(BaseModel):
-    # ADDED: lognormal and gamma
+    # ADDED: lognormal and gamma. Normal 0.7.0
     type: Literal["exponential", "triangular", "uniform", "deterministic", "lognormal", "gamma", "normal"]
     parameters: Dict[str, float]
 
@@ -144,6 +144,8 @@ class ProcessModel(BaseModel):
                 dist_info = f"Lognormal(mean={p.get('mean', 0)}, stdev={p.get('stdev', 0)})"
             elif serv_dist.type == "gamma":
                 dist_info = f"Gamma(shape={p.get('shape', 0)}, scale={p.get('scale', 0)})"
+            elif serv_dist.type == "normal":
+                dist_info = f"Normal(mean={p.get('mean', 0)}, sd={p.get('sd', 0)})"
             else:
                 dist_info = serv_dist.type
             
