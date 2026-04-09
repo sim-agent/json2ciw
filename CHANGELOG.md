@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## 0.8.1
+
+### Fixed
+
+* Mermaid diagram code updated to recognise and display normal distributions.
+
 ## 0.8.0
 
 ### Added
