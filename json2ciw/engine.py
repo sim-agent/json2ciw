@@ -79,6 +79,27 @@ class CiwConverter:
         mu = math.log(m**2 / phi)
         sigma = math.sqrt(math.log(phi**2 / m**2))
         return mu, sigma
+    
+    def _extract_std(self, dist_obj, params):
+        """Help to extract standard deviation from parameters
+        Handles, 'sd', 'std', 'var', 'stdev'."""
+
+        sd_alias = ["sd", "std", "stdev"]
+
+        # check for special case of var first
+        if "var" in params:
+            return math.sqrt(params["var"])
+
+        # sd aliases
+        for alias in sd_alias:
+            if alias in params:
+                return params[alias]
+         
+        # throw exception if sd not supplied
+        err_msg = f"{dist_obj.type} is type {dist_obj.type} and requires a" \
+            + "standard deviation param. None provided. Please review distributions."
+        raise AttributeError(err_msg)
+            
 
     def _make_ciw_dist(self, dist_obj):
         """Helper to convert Pydantic Distribution model to Ciw Object"""
@@ -98,14 +119,19 @@ class CiwConverter:
         # ADDED 0.6.0: Lognormal mapping with math conversion
         elif dist_obj.type == "lognormal":
              m = p["mean"]
-             v = p["stdev"] ** 2
+             v = self._extract_std(dist_obj, p) ** 2
              mu, sigma = self._normal_moments_from_lognormal(m, v)
-             return ciw.dists.Lognormal(mean=mu, standard_deviation=sigma)
+             # 0.7.0 fixed param: "standard_deviation" should be "sd"
+             return ciw.dists.Lognormal(mean=mu, sd=sigma)
         # ADDED 0.6.0: Gamma mapping
         elif dist_obj.type == "gamma":
              return ciw.dists.Gamma(shape=p["shape"], scale=p["scale"])
+        # ADDED 0.7.0: Normal mapping
+        elif dist_obj.type == "normal":
+            # normal expects mean and sd            
+            return ciw.dists.Normal(mean=p["mean"], sd=self._extract_std(dist_obj, p))
         else:
-             raise ValueError(f"Unsupported distribution type for Ciw: {dist_obj.type}")
+             raise ValueError(f"Unsupported distribution type for json2ciw: {dist_obj.type}")
 
 def multiple_replications(
     network: ciw.Network,
