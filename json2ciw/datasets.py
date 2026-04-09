@@ -15,6 +15,10 @@ JACKSON_NETWORK_PATH = Path(__file__).parent.joinpath("models", JACKSON_NETWORK_
 THREE_NODE_FILE_NAME = "three_node_network.json"
 THREE_NODE_PATH = Path(__file__).parent.joinpath("models", THREE_NODE_FILE_NAME)
 
+# modified version of treatsim - 6 node network
+SIX_NODE_UCC_FILE_NAME = "six_node_ucc.json"
+SIX_NODE_UCC_PATH = Path(__file__).parent.joinpath("models", SIX_NODE_UCC_FILE_NAME)
+
 def load_model_file(file_path: str) -> Dict[str, Any]:
     """
     Load a JSON specification for a call centre model from a file.
@@ -92,8 +96,8 @@ def load_jackson_network_model() -> Dict[str, Any]:
 
 def load_three_node_network_model() -> Dict[str, Any]:
     """
-    Load a JSON specification for a classic open jackson network
-    problem from file.
+    Load a JSON specification for a simple node network
+    with mixed distribution types from file
 
     Returns
     -------
@@ -112,3 +116,26 @@ def load_three_node_network_model() -> Dict[str, Any]:
         If there are permissions issues or other I/O errors opening the file.
     """
     return load_model_file(THREE_NODE_PATH)
+
+def load_six_node_ucc_model() -> Dict[str, Any]:
+    """
+    Load a JSON specification for a Urgent care centre
+    with mixed distribution types and six nodes
+    
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary containing the parsed JSON data. The keys are strings
+        representing configuration fields (e.g., "process", "activities") 
+        and values are the corresponding model parameters.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file specified by `file_path` cannot be found.
+    json.JSONDecodeError
+        If the file content is not valid JSON.
+    OSError
+        If there are permissions issues or other I/O errors opening the file.
+    """
+    return load_model_file(SIX_NODE_UCC_PATH)
