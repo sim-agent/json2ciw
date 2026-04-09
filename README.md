@@ -18,10 +18,10 @@ If you reuse any of the code, or the tutorial helps you work, please provide a c
 @software{json2ciw,
   author       = {Monks, Thomas},
   title        = {json2ciw},
-  month        = mar,
+  month        = apr,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.6.0},
+  version      = {v0.7.0},
   doi          = {10.5281/zenodo.18879547},
   url          = {https://doi.org/10.5281/zenodo.18879547},
 }
