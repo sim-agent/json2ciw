@@ -1,0 +1,147 @@
+{
+  "name": "Urgent Care Treatment Centre",
+  "description": "A care pathway to urgently treat trauma and non-trauma patients.",
+  "activities": [
+    {
+      "name": "Triage",
+      "type": "activity",
+      "resource": {
+        "name": "Triage bay",
+        "capacity": 1
+      },
+      "service_distribution": {
+        "type": "exponential",
+        "parameters": {
+          "mean": 3.0
+        }
+      },
+      "arrival_distribution": {
+        "type": "exponential",
+        "parameters": {
+          "mean": 3.2
+        }
+      }
+    },
+    {
+      "name": "Stabilisation",
+      "type": "activity",
+      "resource": {
+        "name": "Trauma room",
+        "capacity": 2
+      },
+      "service_distribution": {
+        "type": "exponential",
+        "parameters": {
+          "mean": 90.0
+        }
+      },
+      "arrival_distribution": null
+    },
+    {
+      "name": "Trauma Treatment",
+      "type": "activity",
+      "resource": {
+        "name": "Trauma cubicle",
+        "capacity": 1
+      },
+      "service_distribution": {
+        "type": "lognormal",
+        "parameters": {
+          "mean": 30.0,
+          "var": 4.0
+        }
+      },
+      "arrival_distribution": null
+    },
+    {
+      "name": "Registration",
+      "type": "activity",
+      "resource": {
+        "name": "Clerk",
+        "capacity": 1
+      },
+      "service_distribution": {
+        "type": "lognormal",
+        "parameters": {
+          "mean": 5.0,
+          "var": 2.0
+        }
+      },
+      "arrival_distribution": null
+    },
+    {
+      "name": "Examination",
+      "type": "activity",
+      "resource": {
+        "name": "Exam room",
+        "capacity": 3
+      },
+      "service_distribution": {
+        "type": "normal",
+        "parameters": {
+          "mean": 16.0,
+          "var": 3.0
+        }
+      },
+      "arrival_distribution": null
+    },
+    {
+      "name": "Non-trauma Treatment",
+      "type": "activity",
+      "resource": {
+        "name": "Non-trauma cubicle",
+        "capacity": 1
+      },
+      "service_distribution": {
+        "type": "lognormal",
+        "parameters": {
+          "mean": 13.3,
+          "var": 2.0
+        }
+      },
+      "arrival_distribution": null
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Triage",
+      "to": "Stabilisation",
+      "probability": 0.12
+    },
+    {
+      "from": "Triage",
+      "to": "Registration",
+      "probability": 0.88
+    },
+    {
+      "from": "Stabilisation",
+      "to": "Trauma Treatment",
+      "probability": 1.0
+    },
+    {
+      "from": "Trauma Treatment",
+      "to": "Exit",
+      "probability": 1.0
+    },
+    {
+      "from": "Registration",
+      "to": "Examination",
+      "probability": 1.0
+    },
+    {
+      "from": "Examination",
+      "to": "Non-trauma Treatment",
+      "probability": 0.6
+    },
+    {
+      "from": "Examination",
+      "to": "Exit",
+      "probability": 0.4
+    },
+    {
+      "from": "Non-trauma Treatment",
+      "to": "Exit",
+      "probability": 1.0
+    }
+  ]
+}
