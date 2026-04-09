@@ -1,18 +1,19 @@
 {
-  "name": "Open Jackson Network",
-  "description": "A simple jackson network to convert to ciw",
+  "name": "Three Node Network",
+  "description": "A simple three node network to convert to ciw",
   "activities": [
     {
-      "name": "Service 1",
+      "name": "Node 1",
       "type": "activity",
       "resource": {
-        "name": "Servers 1",
-        "capacity": 1
+        "name": "Resource 1",
+        "capacity": 18
       },
       "service_distribution": {
-        "type": "exponential",
+        "type": "lognormal",
         "parameters": {
-          "mean": 0.1
+          "mean": 1,
+          "std": 0.1
         }
       },
       "arrival_distribution": {
@@ -23,16 +24,17 @@
       }
     },
     {
-      "name": "Service 2",
+      "name": "Node 2",
       "type": "activity",
       "resource": {
-        "name": "Servers 2",
-        "capacity": 2
+        "name": "Resource 2",
+        "capacity": 12
       },
       "service_distribution": {
-        "type": "exponential",
+        "type": "normal",
         "parameters": {
-          "mean": 0.1
+          "mean": 1,
+          "std": 0.1
         }
       },
       "arrival_distribution": {
@@ -43,16 +45,17 @@
       }
     },
     {
-      "name": "Service 3",
+      "name": "Node 3",
       "type": "activity",
       "resource": {
-        "name": "Servers 3",
-        "capacity": 1
+        "name": "Resource 3",
+        "capacity": 25
       },
       "service_distribution": {
-        "type": "exponential",
+        "type": "lognormal",
         "parameters": {
-          "mean": 0.1
+          "mean": 1,
+          "std": 0.1
         }
       },
       "arrival_distribution": {
@@ -65,48 +68,48 @@
   ],
   "transitions": [
     {
-      "from": "Service 1",
+      "from": "Node 1",
       "to": "Exit",
       "probability": 0.1
     },
     {
-      "from": "Service 1",
-      "to": "Service 2",
+      "from": "Node 1",
+      "to": "Node 2",
       "probability": 0.6
     },
     {
-      "from": "Service 1",
-      "to": "Service 3",
+      "from": "Node 1",
+      "to": "Node 3",
       "probability": 0.3
     },
     {
-      "from": "Service 2",
+      "from": "Node 2",
       "to": "Exit",
       "probability": 0.6
     },
     {
-      "from": "Service 2",
-      "to": "Service 1",
+      "from": "Node 2",
+      "to": "Node 1",
       "probability": 0.1
     },
     {
-      "from": "Service 2",
-      "to": "Service 3",
+      "from": "Node 2",
+      "to": "Node 3",
       "probability": 0.3
     },
     {
-      "from": "Service 3",
+      "from": "Node 3",
       "to": "Exit",
       "probability": 0.2
     },
     {
-      "from": "Service 3",
-      "to": "Service 2",
+      "from": "Node 3",
+      "to": "Node 2",
       "probability": 0.4
     },
     {
-      "from": "Service 3",
-      "to": "Service 1",
+      "from": "Node 3",
+      "to": "Node 1",
       "probability": 0.4
     }
   ]

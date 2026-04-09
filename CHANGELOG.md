@@ -7,9 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## 0.7.0
+
+### Added 
+
+* `three_node_network.json`: example that modifies the basic jackson network and uses lognormal and normal service distributions in v0.7.0 
+* `example_app.py`: added three node example  
+
+### Changed
+
+* `schema.Distribution` now supports "normal" with sample mean and std (`ciw` auto truncates normal at 0)
+* `engine.CiwConverter` updated to handle `ciw` normal distribution.  Handles standard deviation parameter when expressed as "std", "sd" or "var" using `_extract_std()` method.
+
+### Fixed
+
+* `engine.CiwConverter` updated handling log normal. Fixed incorrect parameter "standard_deviation". Should have been "sd".
+* `jackson_network.json`: updated activity "type" parameter to "activity".
+
 ## 0.6.0
 
-## Changed
+### Changed
 
 * `schema.Distribution` now supports "lognormal" with sample mean and std along with "gamma" (shape, scale)
 * `engine.CiwConverter` updated to handle `ciw` lognormal and gamma distributions. Lognormal parameters converted to mu and sigma of underlying normal.

@@ -1,4 +1,8 @@
-from json2ciw.datasets import load_call_centre_model, load_jackson_network_model
+from json2ciw.datasets import (
+    load_call_centre_model, 
+    load_jackson_network_model, 
+    load_three_node_network_model
+)
 from json2ciw.engine import CiwConverter
 from json2ciw import render_simulation_app
 from json2ciw.schema import ProcessModel
@@ -11,7 +15,8 @@ st.set_page_config(layout="wide")
 # Map the dropdown display names to their corresponding functions
 model_loaders = {
     "Jackson Network": load_jackson_network_model,
-    "Call Centre": load_call_centre_model
+    "Call Centre": load_call_centre_model,
+    "Three Node Network": load_three_node_network_model,
 }
 
 # Create a dropdown to select the model

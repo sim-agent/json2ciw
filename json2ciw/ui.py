@@ -45,6 +45,20 @@ def _render_distribution_ui(dist, node_name, dist_type):
     elif dist_class == "Deterministic":
         value = st.sidebar.number_input("Value", value=float(dist.value), key=f"{dist_type}_d_{node_name}")
         return type(dist)(value=value)
+    
+    # ADDED: v0.7.0
+    elif dist_class == "Lognormal":
+        col1, col2 = st.sidebar.columns(2)
+        mean = col1.number_input("mean", value=float(dist.mean), key=f"{dist_type}_ul_{node_name}")
+        sd = col2.number_input("sd", value=float(dist.sd), key=f"{dist_type}_uu_{node_name}")
+        return type(dist)(mean=mean, sd=sd)
+    
+    # ADDED: v0.7.0
+    elif dist_class == "Normal":
+        col1, col2 = st.sidebar.columns(2)
+        mean = col1.number_input("mean", value=float(dist.mean), key=f"{dist_type}_ul_{node_name}")
+        sd = col2.number_input("sd", value=float(dist.sd), key=f"{dist_type}_uu_{node_name}")
+        return type(dist)(mean=mean, sd=sd)
         
     else:
         st.sidebar.warning(f"UI for {dist_class} not implemented. Using defaults.")

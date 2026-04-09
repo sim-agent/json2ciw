@@ -15,7 +15,7 @@ import pandas as pd
 
 class Distribution(BaseModel):
     # ADDED: lognormal and gamma
-    type: Literal["exponential", "triangular", "uniform", "deterministic", "lognormal", "gamma"]
+    type: Literal["exponential", "triangular", "uniform", "deterministic", "lognormal", "gamma", "normal"]
     parameters: Dict[str, float]
 
 
