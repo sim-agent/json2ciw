@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## 0.8.0
+
+### Added
+
+* `six_node_ucc.json` - a simple version of the 6 node treat-sim urgent care treatment centre example with stationary arrivals.   
+* `example_app.py`: added the example treatment centre model.
+* `03_urgent_care_treatment_centre_example.ipynb` - example of converting treat-sim json2ciw
+
+### Changed
+
+* `engine.CiwConverter._normal_moments_from_lognormal` updated to static method.
+
+### Removed
+
+* `03_three_node_network_example.ipynb` notebook not needed and removed.
+
+### Fixed
+
+* `ui` patched so that mean and sd of lognormal is converted to underlying normal before passing to `updated_params`
+
 ## 0.7.0
 
 ### Added 
