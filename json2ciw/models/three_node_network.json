@@ -1,6 +1,6 @@
 {
-  "name": "Open Jackson Network",
-  "description": "A simple jackson network to convert to ciw",
+  "name": "Three Node Network",
+  "description": "A simple three node network to convert to ciw",
   "activities": [
     {
       "name": "Service 1",
@@ -10,9 +10,10 @@
         "capacity": 1
       },
       "service_distribution": {
-        "type": "exponential",
+        "type": "lognormal",
         "parameters": {
-          "mean": 0.1
+          "mean": 10,
+          "std": 1
         }
       },
       "arrival_distribution": {
@@ -30,9 +31,10 @@
         "capacity": 2
       },
       "service_distribution": {
-        "type": "exponential",
+        "type": "normal",
         "parameters": {
-          "mean": 0.1
+          "mean": 10,
+          "std": 1
         }
       },
       "arrival_distribution": {
@@ -50,9 +52,10 @@
         "capacity": 1
       },
       "service_distribution": {
-        "type": "exponential",
+        "type": "lognormal",
         "parameters": {
-          "mean": 0.1
+          "mean": 10,
+          "std": 1
         }
       },
       "arrival_distribution": {
