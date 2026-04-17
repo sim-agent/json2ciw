@@ -234,5 +234,15 @@ class ProcessModel(BaseModel):
                 matrix.at[t.source, t.target] = t.probability
                 
         return matrix
+    
+    def get_resources_df(self) -> pd.DataFrame:
+        records = []
+        for activity in self.activities:
+            records.append({
+                "Resource": activity.resource.name,
+                "Activity": activity.name,
+                "Count": activity.resource.capacity
+            })
+        return pd.DataFrame(records)
 
 
