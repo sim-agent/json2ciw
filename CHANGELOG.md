@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## 0.9.0
+
+### Changed
+
+* Mermaid diagram now has `include_resources` parameter to toggle circles off in complex diagrams.
+
+### Added
+
+* `ProcessModel.get_resources_df()` returns a `pandas.DataFrame` containing a list of resources, their activities and counts.
+
 ## 0.8.1
 
 ### Fixed
