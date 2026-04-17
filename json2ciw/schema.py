@@ -84,7 +84,7 @@ class ProcessModel(BaseModel):
 
         return self
     
-    def to_mermaid(self) -> str:
+    def to_mermaid(self, include_resources: bool = True) -> str:
         """Convert the process model to Mermaid flowchart syntax."""
         lines = ["```mermaid", "graph TD"]
         
@@ -152,13 +152,14 @@ class ProcessModel(BaseModel):
             label = f"{activity.name}<br/>{dist_info}"
             lines.append(f'    {node_id}["{label}"]')
         
-        seen_resources = set()
-        for activity in self.activities:
-            if activity.resource.name not in seen_resources:
-                resource_id = make_node_id(f"Resource_{activity.resource.name}")
-                res_label = f"{activity.resource.name}<br/>({activity.resource.capacity})"
-                lines.append(f'    {resource_id}(("{res_label}"))')
-                seen_resources.add(activity.resource.name)
+        if include_resources:
+            seen_resources = set()
+            for activity in self.activities:
+                if activity.resource.name not in seen_resources:
+                    resource_id = make_node_id(f"Resource_{activity.resource.name}")
+                    res_label = f"{activity.resource.name}<br/>({activity.resource.capacity})"
+                    lines.append(f'    {resource_id}(("{res_label}"))')
+                    seen_resources.add(activity.resource.name)
         
         lines.append('    Exit(["Exit"])')
         lines.append("")
@@ -168,11 +169,12 @@ class ProcessModel(BaseModel):
             arrival_id = f"Arrivals_{node_id}"
             lines.append(f'    {arrival_id} --> {node_id}')
         
-        for activity in self.activities:
-            node_id = make_node_id(activity.name)
-            resource_id = make_node_id(f"Resource_{activity.resource.name}")
-            lines.append(f'    {resource_id} -.Seize.-> {node_id}')
-            lines.append(f'    {node_id} -.Release.-> {resource_id}')
+        if include_resources:
+            for activity in self.activities:
+                node_id = make_node_id(activity.name)
+                resource_id = make_node_id(f"Resource_{activity.resource.name}")
+                lines.append(f'    {resource_id} -.Seize.-> {node_id}')
+                lines.append(f'    {node_id} -.Release.-> {resource_id}')
         
         for transition in self.transitions:
             source_id = make_node_id(transition.source)
@@ -187,12 +189,12 @@ class ProcessModel(BaseModel):
         lines.append("```")
         return "\n".join(lines)
 
-    def display_diagram(self):
-        mermaid_code = self.to_mermaid()
+    def display_diagram(self, include_resources: bool = True):
+        mermaid_code = self.to_mermaid(include_resources=include_resources)
         display(Markdown(mermaid_code))
         
-    def save_diagram(self, filename: str):
-        mermaid_code = self.to_mermaid()
+    def save_diagram(self, filename: str, include_resources: bool = True):
+        mermaid_code = self.to_mermaid(include_resources=include_resources)
         with open(filename, 'w') as f:
             f.write(f"# {self.name}\n\n")
             if self.description:
