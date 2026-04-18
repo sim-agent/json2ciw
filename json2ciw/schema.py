@@ -30,6 +30,7 @@ class Activity(BaseModel):
     resource: Resource
     service_distribution: Distribution
     arrival_distribution: Optional[Distribution] = None
+    renege_distribution: Optional[Distribution] = None
 
 
 class Transition(BaseModel):
