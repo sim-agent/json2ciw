@@ -27,6 +27,7 @@ class CiwConverter:
         number_of_servers = []
         service_distributions = []
         arrival_distributions = []
+        reneging_time_distributions = []
 
         # 3. Iterate through Activities to build Node properties
         for act in self.model.activities:
@@ -43,6 +44,13 @@ class CiwConverter:
                 # If no arrival distribution is specified in JSON, it means no external arrivals
                 # None = old NoArrivals pre ciw v3
                 arrival_distributions.append(None)
+
+            # -- Renege Distribution (Optional) --
+            # TM Added v0.10.0
+            if act.renege_distribution:
+                reneging_time_distributions.append(self._make_ciw_dist(act.renege_distribution))
+            else:
+                reneging_time_distributions.append(None)
 
         # 4. Build Routing Matrix (Process Flow -> Probability Matrix)
         # Initialize an N x N matrix with 0.0
@@ -65,6 +73,7 @@ class CiwConverter:
             "number_of_servers": number_of_servers,
             "arrival_distributions": arrival_distributions,
             "service_distributions": service_distributions,
+            "reneging_time_distributions": reneging_time_distributions,
             "routing": routing
         }
     
@@ -195,18 +204,6 @@ def multiple_replications(
             Time-averaged server utilisation (fraction busy)
         - mean_Lq : float
             Time-averaged mean number of customers in queue
-
-    Examples
-    --------
-    >>> process_model = ProcessModel.model_validate(json_data)
-    >>> network = build_ciw_network(process_model)
-    >>> df_raw = run_replications_general(
-    ...     network, 
-    ...     process_model, 
-    ...     num_reps=100, 
-    ...     runtime=1000
-    ... )
-    >>> summary = summarise_results(df_raw)
     """
     # Build a mapping from node_id (1-indexed) to activity/resource info
     node_metadata = {}
