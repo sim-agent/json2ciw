@@ -1,6 +1,6 @@
 {
-    "name": "Call Handling Process",
-    "description": "Discrete Event Simulation of a Patient call handling process.",
+    "name": "Call Handling Process with Renege.",
+    "description": "Discrete Event Simulation of a Patient call handling process where calling hang up if call is not answered quickly.",
     "activities": [
       {
         "name": "Call Triage",
