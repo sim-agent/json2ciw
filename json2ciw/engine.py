@@ -213,6 +213,8 @@ def multiple_replications(
             "activity_name": activity.name,
             "resource_name": activity.resource.name,
             "resource_capacity": activity.resource.capacity,
+            # added in v0.10.0
+            "has_reneging": activity.renege_distribution is not None,
         }
 
     # Run independent replications in parallel, one per seed
@@ -231,7 +233,6 @@ def multiple_replications(
     records = [row for rep_rows in results for row in rep_rows]
 
     return pd.DataFrame.from_records(records)
-
 
 def _single_run(
     network: ciw.Network,
@@ -253,100 +254,138 @@ def _single_run(
     ----------
     network : ciw.Network
         Configured Ciw network defining the queueing system structure,
-        service and arrival processes, and routing.
+        arrival processes, service processes, routing, and optional reneging
+        behaviour.
     node_metadata : dict[int, dict]
-        Mapping from Ciw node identifiers (1-indexed) to metadata dictionaries
-        containing activity and resource information. Expected keys include
-        ``"activity_name"``, ``"resource_name"``, and ``"resource_capacity"``.
+        Mapping from Ciw node identifiers (1-indexed) to metadata
+        dictionaries containing activity and resource information. Expected
+        keys include ``"activity_name"``, ``"resource_name"``,
+        ``"resource_capacity"``, and optionally ``"has_reneging"``.
     rep : int, optional
         Replication index used both as an identifier in the output and as the
         random seed for the simulation. Default is 0.
     warmup : float, optional
         Length of the warmup period to exclude from statistics. Records with
-        arrival times strictly less than this value are filtered out to reduce
-        initialization bias. Default is 0.0.
+        arrival times strictly less than this value are filtered out.
+        Default is 0.0.
     runtime : float, optional
         Simulation time horizon for this replication. Units must match those
-        used in the arrival and service time distributions. Default is 1000.0.
+        used in the arrival, service, and reneging time distributions.
+        Default is 1000.0.
 
     Returns
     -------
     list[dict]
-        List of row dictionaries, one per transitive node, containing:
-        
-        - ``"rep"`` : int
-          Replication index.
-        - ``"node_id"`` : int
-          Ciw node identifier (1-indexed).
-        - ``"activity_name"`` : str
-          Human-readable activity name for this node.
-        - ``"resource_name"`` : str
-          Name of the resource associated with this node.
-        - ``"resource_capacity"`` : int
-          Number of servers at this node.
-        - ``"arrivals"`` : int
-          Number of completed visits to this node.
-        - ``"mean_wait"`` : float
-          Mean waiting time before service for completed customers.
-        - ``"mean_service"`` : float
-          Mean service time for completed customers.
-        - ``"utilisation"`` : float
-          Time-averaged server utilisation at this node, as a percentage.
-        - ``"mean_Lq"`` : float
-          Time-averaged mean number of customers in queue over the effective
-          horizon ``runtime - warmup``.
+        List of row dictionaries, one per transitive node.
+
+        Core fields returned for all nodes:
+        - ``rep`` : int
+            Replication index.
+        - ``node_id`` : int
+            Ciw node identifier (1-indexed).
+        - ``activity_name`` : str
+            Human-readable activity name for this node.
+        - ``resource_name`` : str
+            Name of the resource associated with this node.
+        - ``resource_capacity`` : int
+            Number of servers at this node.
+        - ``n_service`` : int
+            Number of completed service records at this node.
+        - ``mean_wait`` : float
+            Mean waiting time among customers who started service at this
+            node.
+        - ``mean_service`` : float
+            Mean service time among completed service records at this node.
+        - ``utilisation`` : float
+            Time-averaged server utilisation at this node, as a percentage.
+        - ``mean_Lq`` : float
+            Estimated mean number of customers in queue over the effective
+            horizon ``runtime - warmup``.
+
+        Additional fields for nodes with reneging enabled:
+        - ``n_renege`` : int
+            Number of completed reneging records at this node.
+        - ``mean_wait_renege`` : float
+            Mean waiting time among customers who reneged at this node.
+        - ``mean_wait_all`` : float
+            Mean waiting time across both served and reneging customers at
+            this node.
 
     Notes
     -----
     The Ciw random number generators are seeded via ``ciw.seed(rep)`` to
     ensure reproducibility of each replication. Warmup filtering is applied
-    using the arrival times of customer records, consistent with Ciw usage
-    examples.[web:39][web:48]
+    using the arrival times of customer records. This potentially needs modifying
+    at some point.
+
+    Since version 0.10.0 will return reneging stats if a node has a reneging distribution.
     """
     ciw.seed(rep)
     Q = ciw.Simulation(network)
     Q.simulate_until_max_time(runtime)
-    
-    recs = Q.get_all_records()
-    
-    # Optional warmup filter. 
-    # Ciw examples uses arrival times of entities
+
+    # modified v0.10.0 - separate service and reneged
+    recs = Q.get_all_records(only=["service", "renege"])
+
+    # Warmup filter
     if warmup > 0:
         recs = [r for r in recs if r.arrival_date >= warmup]
-        
+
     rows = []
-    # Loop over transitive nodes (service centres)
+    horizon = runtime - warmup
+
     for node in Q.transitive_nodes:
         node_id = node.id_number
         meta = node_metadata.get(node_id, {})
 
+        # split records - modified v0.10.0
         node_recs = [r for r in recs if r.node == node_id]
-        waits = [r.waiting_time for r in node_recs]
-        services = [r.service_time for r in node_recs]
+        service_recs = [r for r in node_recs if r.record_type == "service"]
+        renege_recs = [r for r in node_recs if r.record_type == "renege"]
 
-        arrivals = len(node_recs)
-        mean_wait = statistics.mean(waits) if waits else 0.0
-        mean_service = statistics.mean(services) if services else 0.0
+        # separate and total waiting times v0.10.0
+        service_waits = [r.waiting_time for r in service_recs]
+        renege_waits = [r.waiting_time for r in renege_recs]
+        all_waits = [r.waiting_time for r in node_recs]
 
-        # Ciw server_utilisation gives time-averaged busy fraction
+        service_times = [r.service_time for r in service_recs]
+
+        n_service = len(service_recs)
+        n_renege = len(renege_recs)
+
+        mean_wait_service = statistics.mean(service_waits) if service_waits else 0.0
+        mean_wait_renege = statistics.mean(renege_waits) if renege_waits else 0.0
+        mean_wait_all = statistics.mean(all_waits) if all_waits else 0.0
+        mean_service = statistics.mean(service_times) if service_times else 0.0
+
         util = node.server_utilisation
 
-        # Time-weighted mean number in queue (Lq)
-        horizon = runtime - warmup
-        total_wait = sum(waits)
-        mean_Lq = total_wait / horizon if horizon > 0 else 0.0
+        total_wait_all = sum(all_waits)
+        mean_Lq = total_wait_all / horizon if horizon > 0 else 0.0
 
-        rows.append({
+        # default row - modified v0.10.0
+        row = {
             "rep": rep,
             "node_id": node_id,
             "activity_name": meta.get("activity_name", f"Node {node_id}"),
             "resource_name": meta.get("resource_name", "Unknown"),
             "resource_capacity": meta.get("resource_capacity", 0),
-            "arrivals": arrivals,
-            "mean_wait": mean_wait,
+            "n_service": n_service,
+            "mean_wait": mean_wait_service,
             "mean_service": mean_service,
             "utilisation": util * 100,
             "mean_Lq": mean_Lq,
+        }
+
+        # if add in renege wait if needed.
+        if meta.get("has_reneging", False):
+            row.update({
+                "n_renege": n_renege,
+                "mean_wait_renege": mean_wait_renege,
+                "mean_wait_all": mean_wait_all,
             })
-        
+
+
+        rows.append(row)
+
     return rows
