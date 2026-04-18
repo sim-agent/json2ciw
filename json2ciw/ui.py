@@ -87,6 +87,7 @@ def render_simulation_app(default_params, model_metadata, valid_process_model=No
         'number_of_servers': [],
         'arrival_distributions': [],
         'service_distributions': [],
+        'reneging_time_distributions': [],
         'routing': []
     }
     
@@ -118,10 +119,16 @@ def render_simulation_app(default_params, model_metadata, valid_process_model=No
         if srv_dist_data is not None:
             st.sidebar.markdown(f"**Service Distribution**")
         srv_dist = _render_distribution_ui(srv_dist_data, node_name, "Service")
-        
-        # need to account for distributions like the lognormal requiring conversion
         updated_params['service_distributions'].append(srv_dist)
         
+        # Reneging Distribution (Conditional Header)
+        # TM added v0.10.0
+        renege_dist_data = default_params['reneging_time_distributions'][i]
+        if renege_dist_data is not None:
+            st.sidebar.markdown(f"**Renege Distribution**")
+        renege_dist = _render_distribution_ui(renege_dist_data, node_name, "Renege")
+        updated_params['reneging_time_distributions'].append(renege_dist)
+
         st.sidebar.divider()
 
     # --- UI: MAIN PANEL TABS ---

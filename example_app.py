@@ -3,6 +3,8 @@ from json2ciw.datasets import (
     load_jackson_network_model, 
     load_three_node_network_model,
     load_six_node_ucc_model,
+    load_renge_call_model,
+    
 )
 from json2ciw.engine import CiwConverter
 from json2ciw import render_simulation_app
@@ -19,6 +21,7 @@ model_loaders = {
     "Call Centre": load_call_centre_model,
     "Three Node Network": load_three_node_network_model,
     "Urgent Care Treatment Centre": load_six_node_ucc_model,
+    "Renge Call Centre": load_renge_call_model,
 }
 
 # Create a dropdown to select the model
