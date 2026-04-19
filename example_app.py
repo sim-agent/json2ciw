@@ -22,7 +22,7 @@ model_loaders = {
     "Call Centre": load_call_centre_model,
     "Three Node Network": load_three_node_network_model,
     "Urgent Care Treatment Centre": load_six_node_ucc_model,
-    "Renge Call Centre": load_renge_call_model,
+    "Renge Call Centre": load_renege_call_model,
     "M/M/1 with Renege": load_mm1_renege_model,
 }
 
