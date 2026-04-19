@@ -1,0 +1,26 @@
+{
+    "name": "M/M/1 with renege",
+    "description": "A simple M/M/1 queuing system with reneging customers.",
+    "activities": [
+      {
+        "name": "Service",
+        "type": "activity",
+        "resource": { "name": "Resource1", "capacity": 1 },
+        "service_distribution": {
+          "type": "Exponential",
+          "parameters": { "rate": 1.5 }
+        },
+        "arrival_distribution": {
+          "type": "exponential",
+          "parameters": { "rate": 1.0 }
+        },
+        "renege_distribution": {
+          "type": "exponential",
+          "parameters": { "rate": 0.5 }
+        }
+      },
+    ],
+    "transitions": [
+      { "from": "Service", "to": "Exit", "probability": 1.0 },
+    ]
+}
