@@ -20,12 +20,12 @@ SIX_NODE_UCC_FILE_NAME = "six_node_ucc.json"
 SIX_NODE_UCC_PATH = Path(__file__).parent.joinpath("models", SIX_NODE_UCC_FILE_NAME)
 
 # Call centre example with reneging calls
-RENGE_FILE_NAME = "call_renege.json"
-RENGE_PATH = Path(__file__).parent.joinpath("models", RENGE_FILE_NAME)
+RENEGE_FILE_NAME = "call_renege.json"
+RENEGE_PATH = Path(__file__).parent.joinpath("models", RENEGE_FILE_NAME)
 
 # m/m/1 with renege
-MM1_RENGE_FILE_NAME = "mm1_renege.json"
-MM1_RENGE_PATH = Path(__file__).parent.joinpath("models", MM1_RENGE_FILE_NAME)
+MM1_RENEGE_FILE_NAME = "mm1_renege.json"
+MM1_RENEGE_PATH = Path(__file__).parent.joinpath("models", MM1_RENEGE_FILE_NAME)
 
 
 def load_model_file(file_path: str) -> Dict[str, Any]:
@@ -170,7 +170,7 @@ def load_renege_call_model() -> Dict[str, Any]:
     OSError
         If there are permissions issues or other I/O errors opening the file.
     """
-    return load_model_file(RENGE_PATH)
+    return load_model_file(RENEGE_PATH)
 
 def load_mm1_renege_model() -> Dict[str, Any]:
     """
@@ -193,5 +193,5 @@ def load_mm1_renege_model() -> Dict[str, Any]:
     OSError
         If there are permissions issues or other I/O errors opening the file.
     """
-    return load_model_file(MM1_RENGE_PATH)
+    return load_model_file(MM1_RENEGE_PATH)
 
