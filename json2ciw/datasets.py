@@ -149,7 +149,7 @@ def load_six_node_ucc_model() -> Dict[str, Any]:
     """
     return load_model_file(SIX_NODE_UCC_PATH)
 
-def load_renge_call_model() -> Dict[str, Any]:
+def load_renege_call_model() -> Dict[str, Any]:
     """
     Load a JSON specification for a Urgent care call
     centre with calls that renege if they wait for too long
@@ -172,7 +172,7 @@ def load_renge_call_model() -> Dict[str, Any]:
     """
     return load_model_file(RENGE_PATH)
 
-def load_mm1_renge_model() -> Dict[str, Any]:
+def load_mm1_renege_model() -> Dict[str, Any]:
     """
     Load a JSON specification for a M/M/1 with
     customers that renege if they wait for too long
