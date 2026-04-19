@@ -23,6 +23,11 @@ SIX_NODE_UCC_PATH = Path(__file__).parent.joinpath("models", SIX_NODE_UCC_FILE_N
 RENGE_FILE_NAME = "call_renege.json"
 RENGE_PATH = Path(__file__).parent.joinpath("models", RENGE_FILE_NAME)
 
+# m/m/1 with renege
+MM1_RENGE_FILE_NAME = "mm1_renege.json"
+MM1_RENGE_PATH = Path(__file__).parent.joinpath("models", MM1_RENGE_FILE_NAME)
+
+
 def load_model_file(file_path: str) -> Dict[str, Any]:
     """
     Load a JSON specification for a call centre model from a file.
@@ -166,3 +171,27 @@ def load_renge_call_model() -> Dict[str, Any]:
         If there are permissions issues or other I/O errors opening the file.
     """
     return load_model_file(RENGE_PATH)
+
+def load_mm1_renge_model() -> Dict[str, Any]:
+    """
+    Load a JSON specification for a M/M/1 with
+    customers that renege if they wait for too long
+
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary containing the parsed JSON data. The keys are strings
+        representing configuration fields (e.g., "process", "activities")
+        and values are the corresponding model parameters.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file specified by `file_path` cannot be found.
+    json.JSONDecodeError
+        If the file content is not valid JSON.
+    OSError
+        If there are permissions issues or other I/O errors opening the file.
+    """
+    return load_model_file(MM1_RENGE_PATH)
+
