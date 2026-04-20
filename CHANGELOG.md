@@ -12,10 +12,14 @@ Consistent identifier (represents all versions, resolves to latest):
 ### Changed
 
 * `ProcessModel.to_mermaid()` refactored.  Refactored distribution formatting to function. Added Renege as hexagon with dashed arrow.
+* `ProcessModel.get_distributions_df()` now handles renege distributions
+* `engine.CiwConverter` now handles renege distributions as part of `generate_params`
 
 ### Added
 
 * `schema.Activity` now has a optional `renege_distribution` field.
+* Two new examples in `datasets`:  `load_mm1_renege_model` and `load_renege_call_model`
+* `04_call_centre_renege.ipynb` example notebook added.
 
 ## 0.9.0
 
