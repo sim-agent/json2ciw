@@ -87,11 +87,34 @@ class ProcessModel(BaseModel):
         return self
     
     def _format_dist(self, dist: Distribution, context: str = "service") -> str:
-        """Format a distribution for Mermaid labels.
-        
-        Parameters:
-        -----------
-            context: 'arrival' (verbose prefix), 'service'/'renege' (compact).
+        """
+        Format a distribution as a human-readable string for Mermaid labels.
+
+        Parameters
+        ----------
+        dist : Distribution
+            The distribution object to format, containing a ``type`` and
+            ``parameters`` dictionary.
+        context : str, optional
+            Rendering context. Use ``'arrival'`` to prepend
+            ``'Time between arrivals<br/>'`` for arrival node labels.
+            Use ``'service'`` or ``'renege'`` for compact activity and
+            renege node labels. Default is ``'service'``.
+
+        Returns
+        -------
+        str
+            A formatted string representation of the distribution suitable
+            for embedding in a Mermaid node label. For example:
+            ``'Exponential(λ=0.5)'`` or
+            ``'Time between arrivals<br/>Exponential(λ=0.5)'``.
+
+        Notes
+        -----
+        Supported distribution types are: ``'exponential'``, ``'triangular'``,
+        ``'uniform'``, ``'deterministic'``, ``'lognormal'``, ``'gamma'``, and
+        ``'normal'``. Unrecognised types fall back to returning the raw type
+        string.
         """
         p = dist.parameters
         
@@ -121,7 +144,51 @@ class ProcessModel(BaseModel):
         return params
 
     def to_mermaid(self, include_resources: bool = True) -> str:
-        """Convert the process model to Mermaid flowchart syntax."""
+        """
+        Convert the process model to a Mermaid flowchart string.
+
+        Generates a ``graph TD`` Mermaid diagram representing the queuing
+        network, including arrival sources, activity nodes, optional resource
+        nodes, renege side-flows, and routing transitions.
+
+        Parameters
+        ----------
+        include_resources : bool, optional
+            If ``True``, resource nodes are rendered as stadium shapes with
+            dashed ``Seize`` and ``Release`` edges connecting them to their
+            associated activities. Default is ``True``.
+
+        Returns
+        -------
+        str
+            A string containing a fenced Mermaid code block (including
+            opening and closing triple-backtick markers) ready for rendering
+            in a Jupyter notebook or Markdown document.
+
+        Notes
+        -----
+        Node types used in the diagram:
+
+        - **Rounded rectangle** ``( )``: Arrival source nodes, labelled with
+        the inter-arrival distribution.
+        - **Rectangle** ``[ ]``: Activity nodes, labelled with the activity
+        name and service distribution.
+        - **Hexagon** ``{{ }}``: Renege nodes, connected to their parent
+        activity via a dashed edge. Rendered only when an activity has a
+        ``renege_distribution`` defined.
+        - **Stadium** ``([ ])``: The terminal ``Exit`` node.
+        - **Double circle** ``(( ))``: Resource nodes, rendered when
+        ``include_resources=True``.
+
+        Transition edges with probability < 1.0 are labelled with the
+        percentage. Renege edges are always dashed (``-.->``). Resource
+        seize/release edges are dashed with text labels.
+
+        Examples
+        --------
+        >>> print(model.to_mermaid())
+        >>> model.to_mermaid(include_resources=False)
+        """
         lines = ["```mermaid", "graph TD"]
         
         if self.description:
