@@ -221,6 +221,17 @@ class ProcessModel(BaseModel):
                 "Distribution Type": srv.type.capitalize(),
                 "Parameters": ", ".join(f"{k}={v}" for k, v in srv.parameters.items())
             })
+
+            # added v0.10.0 to show renege parameters if present.
+            if activity.renege_distribution:
+                ren = activity.renege_distribution
+                records.append({
+                    "Activity": activity.name,
+                    "Phase": "Renege",
+                    "Distribution Type": ren.type.capitalize(),
+                    "Parameters": ", ".join(f"{k}={v}" for k, v in ren.parameters.items())
+                })
+
             
         return pd.DataFrame(records)
 
