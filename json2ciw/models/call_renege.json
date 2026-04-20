@@ -1,0 +1,37 @@
+{
+    "name": "Call Handling Process with Renege.",
+    "description": "Discrete Event Simulation of a Patient call handling process where calling hang up if call is not answered quickly.",
+    "activities": [
+      {
+        "name": "Call Triage",
+        "type": "activity",
+        "resource": { "name": "Operator", "capacity": 13 },
+        "service_distribution": {
+          "type": "triangular",
+          "parameters": { "min": 5, "mode": 7, "max": 10 }
+        },
+        "arrival_distribution": {
+          "type": "exponential",
+          "parameters": { "mean": 0.6 }
+        },
+        "renege_distribution": {
+          "type": "uniform",
+          "parameters": { "min": 1.0, "max": 10.0 }
+        }
+      },
+      {
+        "name": "Nurse Consultation",
+        "type": "activity",
+        "resource": { "name": "Nurse", "capacity": 9 },
+        "service_distribution": {
+          "type": "uniform",
+          "parameters": { "min": 10, "max": 20 }
+        }
+      }
+    ],
+    "transitions": [
+      { "from": "Call Triage", "to": "Nurse Consultation", "probability": 0.4 },
+      { "from": "Call Triage", "to": "Exit", "probability": 0.6 },
+      { "from": "Nurse Consultation", "to": "Exit", "probability": 1.0 }
+    ]
+}

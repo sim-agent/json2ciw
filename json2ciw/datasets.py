@@ -19,6 +19,15 @@ THREE_NODE_PATH = Path(__file__).parent.joinpath("models", THREE_NODE_FILE_NAME)
 SIX_NODE_UCC_FILE_NAME = "six_node_ucc.json"
 SIX_NODE_UCC_PATH = Path(__file__).parent.joinpath("models", SIX_NODE_UCC_FILE_NAME)
 
+# Call centre example with reneging calls
+RENEGE_FILE_NAME = "call_renege.json"
+RENEGE_PATH = Path(__file__).parent.joinpath("models", RENEGE_FILE_NAME)
+
+# m/m/1 with renege
+MM1_RENEGE_FILE_NAME = "mm1_renege.json"
+MM1_RENEGE_PATH = Path(__file__).parent.joinpath("models", MM1_RENEGE_FILE_NAME)
+
+
 def load_model_file(file_path: str) -> Dict[str, Any]:
     """
     Load a JSON specification for a call centre model from a file.
@@ -139,3 +148,50 @@ def load_six_node_ucc_model() -> Dict[str, Any]:
         If there are permissions issues or other I/O errors opening the file.
     """
     return load_model_file(SIX_NODE_UCC_PATH)
+
+def load_renege_call_model() -> Dict[str, Any]:
+    """
+    Load a JSON specification for a Urgent care call
+    centre with calls that renege if they wait for too long
+    
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary containing the parsed JSON data. The keys are strings
+        representing configuration fields (e.g., "process", "activities") 
+        and values are the corresponding model parameters.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file specified by `file_path` cannot be found.
+    json.JSONDecodeError
+        If the file content is not valid JSON.
+    OSError
+        If there are permissions issues or other I/O errors opening the file.
+    """
+    return load_model_file(RENEGE_PATH)
+
+def load_mm1_renege_model() -> Dict[str, Any]:
+    """
+    Load a JSON specification for a M/M/1 with
+    customers that renege if they wait for too long
+
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary containing the parsed JSON data. The keys are strings
+        representing configuration fields (e.g., "process", "activities")
+        and values are the corresponding model parameters.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file specified by `file_path` cannot be found.
+    json.JSONDecodeError
+        If the file content is not valid JSON.
+    OSError
+        If there are permissions issues or other I/O errors opening the file.
+    """
+    return load_model_file(MM1_RENEGE_PATH)
+

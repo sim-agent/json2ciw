@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## 0.10.0
+
+### Changed
+
+* `ProcessModel.to_mermaid()` refactored.  Refactored distribution formatting to function. Added Renege as hexagon with dashed arrow.
+* `ProcessModel.get_distributions_df()` now handles renege distributions
+* `engine.CiwConverter` now handles renege distributions as part of `generate_params`
+* `ui` modified to handle renege distributions.
+* `example_app.py` new models demonstrating renege have been added.
+
+### Added
+
+* `schema.Activity` now has a optional `renege_distribution` field.
+* Two new examples in `datasets`:  `load_mm1_renege_model` and `load_renege_call_model`
+* `04_call_centre_renege.ipynb` example notebook added.
+
 ## 0.9.0
 
 ### Changed
