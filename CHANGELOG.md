@@ -14,6 +14,8 @@ Consistent identifier (represents all versions, resolves to latest):
 * `ProcessModel.to_mermaid()` refactored.  Refactored distribution formatting to function. Added Renege as hexagon with dashed arrow.
 * `ProcessModel.get_distributions_df()` now handles renege distributions
 * `engine.CiwConverter` now handles renege distributions as part of `generate_params`
+* `ui` modified to handle renege distributions.
+* `example_app.py` new models demonstrating renege have been added.
 
 ### Added
 
