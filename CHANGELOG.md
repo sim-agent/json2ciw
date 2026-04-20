@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): 
 
+## 0.10.0
+
+### Changed
+
+* `ProcessModel.to_mermaid()` refactored.  Refactored distribution formatting to function. Added Renege as hexagon with dashed arrow.
+
+### Added
+
+* `schema.Activity` now has a optional `renege_distribution` field.
+
 ## 0.9.0
 
 ### Changed
