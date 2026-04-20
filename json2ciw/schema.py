@@ -30,6 +30,7 @@ class Activity(BaseModel):
     resource: Resource
     service_distribution: Distribution
     arrival_distribution: Optional[Distribution] = None
+    # added v0.10.0
     renege_distribution: Optional[Distribution] = None
 
 
@@ -88,7 +89,8 @@ class ProcessModel(BaseModel):
     def _format_dist(self, dist: Distribution, context: str = "service") -> str:
         """Format a distribution for Mermaid labels.
         
-        Args:
+        Parameters:
+        -----------
             context: 'arrival' (verbose prefix), 'service'/'renege' (compact).
         """
         p = dist.parameters
@@ -213,6 +215,7 @@ class ProcessModel(BaseModel):
             f.write(mermaid_code)
 
     def get_distributions_df(self) -> pd.DataFrame:
+        """Get all distributions in the model as a DataFrame"""
         records = []
         for activity in self.activities:
             if activity.arrival_distribution:
@@ -246,6 +249,7 @@ class ProcessModel(BaseModel):
         return pd.DataFrame(records)
 
     def get_routing_matrix_df(self) -> pd.DataFrame:
+        """ Get the routing probabilities as a DataFrame"""
         activities = [a.name for a in self.activities]
         targets = activities + ["Exit"]
         matrix = pd.DataFrame(0.0, index=activities, columns=targets)
@@ -258,6 +262,7 @@ class ProcessModel(BaseModel):
         return matrix
     
     def get_resources_df(self) -> pd.DataFrame:
+        """ Get the activity resources as a DataFrame"""
         records = []
         for activity in self.activities:
             records.append({
