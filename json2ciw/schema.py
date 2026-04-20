@@ -85,6 +85,39 @@ class ProcessModel(BaseModel):
 
         return self
     
+    def _format_dist(self, dist: Distribution, context: str = "service") -> str:
+        """Format a distribution for Mermaid labels.
+        
+        Args:
+            context: 'arrival' (verbose prefix), 'service'/'renege' (compact).
+        """
+        p = dist.parameters
+        
+        # Parameter formatting (shared logic)
+        if dist.type == "exponential" and "rate" in p:
+            params = f"Exponential(λ={p['rate']:.1f})"
+        elif dist.type == "exponential" and "mean" in p:
+            params = f"Exponential(mean={p['mean']:.1f})"
+        elif dist.type == "triangular":
+            params = f"Triangular({p.get('min', 0)}, {p.get('mode', 0)}, {p.get('max', 0)})"
+        elif dist.type == "uniform":
+            params = f"Uniform({p.get('min', 0)}, {p.get('max', 0)})"
+        elif dist.type == "deterministic" and "value" in p:
+            params = f"Deterministic({p['value']})"
+        elif dist.type == "lognormal":
+            params = f"Lognormal(mean={p.get('mean', 0)}, stdev={p.get('stdev', 0)})"
+        elif dist.type == "gamma":
+            params = f"Gamma(shape={p.get('shape', 0)}, scale={p.get('scale', 0)})"
+        elif dist.type == "normal":
+            params = f"Normal(mean={p.get('mean', 0)}, sd={p.get('sd', 0)})"
+        else:
+            params = dist.type
+        
+        # Context-specific prefix
+        if context == "arrival":
+            return f"Time between arrivals<br/>{params}"
+        return params
+
     def to_mermaid(self, include_resources: bool = True) -> str:
         """Convert the process model to Mermaid flowchart syntax."""
         lines = ["```mermaid", "graph TD"]
@@ -97,62 +130,29 @@ class ProcessModel(BaseModel):
         
         entry_activities = [a for a in self.activities if a.arrival_distribution]
         
+        # --- Arrival nodes ---
         for activity in entry_activities:
             node_id = make_node_id(activity.name)
             arrival_id = f"Arrivals_{node_id}"
-            
-            arr_dist = activity.arrival_distribution
-            p = arr_dist.parameters
-            
-            if arr_dist.type == "exponential" and "rate" in p:
-                arr_label = f"Time between arrivals<br/>Exponential(λ={p['rate']:.1f})"
-            elif arr_dist.type == "exponential" and "mean" in p:
-                arr_label = f"Time between arrivals<br/>Exponential(mean={p['mean']:.1f})"
-            elif arr_dist.type == "triangular":
-                arr_label = f"Time between arrivals<br/>Triangular({p.get('min', 0)}, {p.get('mode', 0)}, {p.get('max', 0)})"
-            elif arr_dist.type == "uniform":
-                arr_label = f"Time between arrivals<br/>Uniform({p.get('min', 0)}, {p.get('max', 0)})"
-            elif arr_dist.type == "deterministic" and "value" in p:
-                arr_label = f"Time between arrivals<br/>Deterministic({p['value']})"
-            # ADDED: lognormal and gamma formatting
-            elif arr_dist.type == "lognormal":
-                arr_label = f"Time between arrivals<br/>Lognormal(mean={p.get('mean', 0)}, stdev={p.get('stdev', 0)})"
-            elif arr_dist.type == "gamma":
-                arr_label = f"Time between arrivals<br/>Gamma(shape={p.get('shape', 0)}, scale={p.get('scale', 0)})"
-            else:
-                arr_label = f"Time between arrivals<br/>{arr_dist.type}"
-            
+            arr_label = self._format_dist(activity.arrival_distribution, context="arrival")
             lines.append(f'    {arrival_id}("{arr_label}")')
         
+        # --- Activity nodes ---
         for activity in self.activities:
             node_id = make_node_id(activity.name)
-            
-            serv_dist = activity.service_distribution
-            p = serv_dist.parameters
-            
-            if serv_dist.type == "exponential" and "rate" in p:
-                dist_info = f"Exp(λ={p['rate']:.1f})"
-            elif serv_dist.type == "exponential" and "mean" in p:
-                dist_info = f"Exp(mean={p['mean']:.1f})"
-            elif serv_dist.type == "triangular":
-                dist_info = f"Tri({p.get('min', 0)}, {p.get('mode', 0)}, {p.get('max', 0)})"
-            elif serv_dist.type == "uniform":
-                dist_info = f"Uniform({p.get('min', 0)}, {p.get('max', 0)})"
-            elif serv_dist.type == "deterministic" and "value" in p:
-                dist_info = f"Det({p['value']})"
-            # ADDED: lognormal and gamma formatting
-            elif serv_dist.type == "lognormal":
-                dist_info = f"Lognormal(mean={p.get('mean', 0)}, stdev={p.get('stdev', 0)})"
-            elif serv_dist.type == "gamma":
-                dist_info = f"Gamma(shape={p.get('shape', 0)}, scale={p.get('scale', 0)})"
-            elif serv_dist.type == "normal":
-                dist_info = f"Normal(mean={p.get('mean', 0)}, sd={p.get('sd', 0)})"
-            else:
-                dist_info = serv_dist.type
-            
+            dist_info = self._format_dist(activity.service_distribution)
             label = f"{activity.name}<br/>{dist_info}"
             lines.append(f'    {node_id}["{label}"]')
         
+        # --- Renege nodes (parallel renege flow) ---
+        for activity in self.activities:
+            if activity.renege_distribution:
+                node_id = make_node_id(activity.name)
+                renege_id = f"Renege_{node_id}"
+                renege_info = self._format_dist(activity.renege_distribution)
+                lines.append('    ' + renege_id + '{{"Renege<br/>' + renege_info + '"}}')
+        
+        # --- Resource nodes ---
         if include_resources:
             seen_resources = set()
             for activity in self.activities:
@@ -165,11 +165,13 @@ class ProcessModel(BaseModel):
         lines.append('    Exit(["Exit"])')
         lines.append("")
         
+        # --- Edges: arrivals ---
         for activity in entry_activities:
             node_id = make_node_id(activity.name)
             arrival_id = f"Arrivals_{node_id}"
             lines.append(f'    {arrival_id} --> {node_id}')
         
+        # --- Edges: resource seize/release ---
         if include_resources:
             for activity in self.activities:
                 node_id = make_node_id(activity.name)
@@ -177,6 +179,14 @@ class ProcessModel(BaseModel):
                 lines.append(f'    {resource_id} -.Seize.-> {node_id}')
                 lines.append(f'    {node_id} -.Release.-> {resource_id}')
         
+        # --- Edges: renege (dashed optional path) ---
+        for activity in self.activities:
+            if activity.renege_distribution:
+                node_id = make_node_id(activity.name)
+                renege_id = f"Renege_{node_id}"
+                lines.append(f'    {node_id} -.-> {renege_id}')
+        
+        # --- Edges: transitions ---
         for transition in self.transitions:
             source_id = make_node_id(transition.source)
             target_id = make_node_id(transition.target) if transition.target != "Exit" else "Exit"
