@@ -8,26 +8,37 @@ dynamic = ["version"]
 description = "A python package to convert JSON file to working Ciw DES models"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Thomas Monks", email = "t.m.w.monks@exeter.ac.uk" },
+    { name = "Amy Heather", email = "a.heather2@exeter.ac.uk" },
 ]
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11", 
     "Programming Language :: Python :: 3.12",
 
 ]
 dependencies = [
+    "ciw>=3.2.7",
     "joblib>=1.5.3",
     "numpy>=1.26.1", 
     "pandas>=2.0.1",
+    "plotly>=6",
     "pydantic>=2.12.5",
-    "ciw>=3.2.7",
-    "streamlit>=1.55.0, <2.0.0",
-    "plotly>=6"
+    "streamlit>=1.55.0, <2.0.0"
+]
+
+[dependency-groups]
+dev = [
+    "black",
+    "flake8",
+    "great-docs",
+    "hatch",
+    "matplotlib",
+    "pytest",
+    "rich"
 ]
 
 [project.urls]
