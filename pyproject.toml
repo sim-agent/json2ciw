@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "A python package to convert JSON file to working Ciw DES models"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Thomas Monks", email = "t.m.w.monks@exeter.ac.uk" },
     { name = "Amy Heather", email = "a.heather2@exeter.ac.uk" },
@@ -16,7 +16,6 @@ authors = [
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11", 
     "Programming Language :: Python :: 3.12",
 
