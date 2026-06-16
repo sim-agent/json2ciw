@@ -20,3 +20,17 @@ To open in your browser:
 ```bash
 great-docs preview
 ```
+
+## All-contributors
+
+To add names or contributions to the README, first install the [All-Contributors CLI tool](https://allcontributors.org/cli/installation/):
+
+```bash
+npm i -D all-contributors-cli
+```
+
+Then run:
+
+```
+npx all-contributors
+```
