@@ -22,13 +22,24 @@ classifiers = [
 
 ]
 dependencies = [
+    "ciw>=3.2.7",
     "joblib>=1.5.3",
     "numpy>=1.26.1", 
     "pandas>=2.0.1",
+    "plotly>=6",
     "pydantic>=2.12.5",
-    "ciw>=3.2.7",
-    "streamlit>=1.55.0, <2.0.0",
-    "plotly>=6"
+    "streamlit>=1.55.0, <2.0.0"
+]
+
+[dependency-groups]
+dev = [
+    "black",
+    "flake8",
+    "great-docs",
+    "hatch",
+    "matplotlib",
+    "pytest",
+    "rich"
 ]
 
 [project.urls]
