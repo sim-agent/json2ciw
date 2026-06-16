@@ -3,11 +3,9 @@ title: Open Network with lognormal service times
 jupyter: python3
 ---
 
-
-In this notebook we will create a `ciw` network model from a specification in a JSON file.
+On this page we will create a `ciw` network model from a specification in a JSON file.
 
 The model represents a simple three node network problem with lognormal service times.
-
 
 ## 1. Imports
 

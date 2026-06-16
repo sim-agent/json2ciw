@@ -3,11 +3,9 @@ title: Urgent care call centre with caller hang up (renege)
 jupyter: python3
 ---
 
-
-In this notebook we will create a `ciw` network model from a specification in a JSON file.
+On this page we will create a `ciw` network model from a specification in a JSON file.
 
 The model is a modification of the original call centre model to include caller waiting time patience. I.e. they hang up if the call is not answered quickly.
-
 
 ## 1. Imports
 
@@ -50,7 +48,7 @@ from rich import print
 json_network = load_renege_call_model()
 ```
 
-display as collapsible JSON.  Expand to view the details.
+Display as collapsible JSON.  Expand to view the details.
 
 ```{python}
 JSON(json_network)

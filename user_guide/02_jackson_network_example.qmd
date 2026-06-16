@@ -3,15 +3,11 @@ title: Open Jackson Network Model from JSON
 jupyter: python3
 ---
 
-
-In this notebook we will create a `ciw` network model from a specification in a JSON file.
+On this page we will create a `ciw` network model from a specification in a JSON file.
 
 The model represents a a classic queuing network problem that can be formulated as an Open Jackson Network.
 
-<img src="img/jackson_network_sketch.png" alt="jackson_network" width="600"/>
-
-
-
+![](/img/jackson_network_sketch.png){width=80% fig-align="center" fig-alt="Jackson network"}
 
 ## 1. Imports
 

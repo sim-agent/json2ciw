@@ -3,8 +3,7 @@ title: Ciw Call Centre Model from JSON
 jupyter: python3
 ---
 
-
-In this notebook we will create a `ciw` network model from a specification in a JSON file.
+On this page we will create a `ciw` network model from a specification in a JSON file.
 
 The model represents a simple urgent care call centre defined in [Monks and Harper (2023)](https://openresearch.nihr.ac.uk/articles/3-48)
 
@@ -12,10 +11,7 @@ The model represents a simple urgent care call centre defined in [Monks and Harp
 * Two activities for call triage (by an operator resource) and nurse call back (by a nurse).
 * Only 40% of patients require a nurse call back by default.
 
-<img src="img/call_centre_diagram.png" alt="call_centre" width="600"/>
-
-
-
+![](/img/call_centre_diagram.png){width=80% fig-align="center" fig-alt="Call centre diagram"}
 
 ## 1. Imports
 
