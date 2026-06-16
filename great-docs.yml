@@ -44,11 +44,18 @@ dynamic: true
 authors:
   - name: Thomas Monks
     role: Author
-    # affiliation: 
+    affiliation: University of Exeter
     email: t.m.w.monks@exeter.ac.uk
-    # github: 
-    # orcid: 
+    github: https://github.com/TomMonks
+    orcid: 0000-0003-2631-4481
     # homepage: 
+  - name: Amy Heather
+    role: Author
+    affiliation: University of Exeter
+    email: A.Heather2@exeter.ac.uk
+    github: https://github.com/amyheather
+    orcid: 0000-0002-6596-3479
+    homepage: https://amyheather.github.io/
 
 # Funding / Copyright Holder
 # --------------------------
