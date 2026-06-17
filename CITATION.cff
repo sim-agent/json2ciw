@@ -2,11 +2,11 @@
 # Visit https://bit.ly/cffinit to generate yours today!
 
 cff-version: 1.2.0
-title: json2ciw
-message: >-
-  If you use this software, please cite it using the
-  metadata from this file.
+message: 'If you wish to cite the "json2ciw" package use:'
 type: software
+title: json2ciw
+abstract:
+  A simple tool for converting JSON files into functional Ciw simulation models.
 authors:
   - given-names: Thomas
     family-names: Monks
@@ -17,8 +17,9 @@ authors:
     email: a.heather2@exeter.ac.uk
     affiliation: University of Exeter
     orcid: 'https://orcid.org/0000-0002-6596-3479'
-repository-code: 'https://github.com/sim-agent/json2ciw'
-doi: 'https://doi.org/10.5281/zenodo.18879546'
+repository-code: https://github.com/sim-agent/json2ciw
+url: https://github.com/sim-agent/json2ciw
+doi: https://doi.org/10.5281/zenodo.18879546
 keywords:
   - python
   - open science
@@ -27,3 +28,4 @@ keywords:
   - Agentic AI
   - simulation
 license: MIT
+version: "0.10.0"

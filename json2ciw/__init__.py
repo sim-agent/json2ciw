@@ -1,4 +1,5 @@
-__author__ = "Tom Monks"
+"""json2ciw."""
+
 __version__ = "0.10.0"
 
 from .datasets import load_call_centre_model, load_model_file
