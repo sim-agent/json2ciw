@@ -8,7 +8,7 @@ message: >-
   metadata from this file.
 type: software
 authors:
-  - given-names: 'Thomas '
+  - given-names: Thomas
     family-names: Monks
     affiliation: University of Exeter
     orcid: 'https://orcid.org/0000-0003-2631-4481'
@@ -18,6 +18,7 @@ authors:
     affiliation: University of Exeter
     orcid: 'https://orcid.org/0000-0002-6596-3479'
 repository-code: 'https://github.com/sim-agent/json2ciw'
+doi: 'https://doi.org/10.5281/zenodo.18879546'
 keywords:
   - python
   - open science
