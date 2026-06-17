@@ -27,20 +27,28 @@ dynamic: true
 
 # Logo & Favicon
 # ---------------
-# Point to a single logo file (replaces the text title in the navbar):
-# logo: assets/logo.svg
-#
-# For light/dark variants:
-# logo:
-#   light: assets/logo-light.svg
-#   dark: assets/logo-dark.svg
-#
-# To show the text title alongside the logo, add: show_title: true
+logo:
+  light: img/whitelogo.png
+  dark: img/orangelogo.png
+favicon: img/favicon.png
+
+# Site Settings
+# -------------
+# Configure page metadata timestamps and other site-wide options
+site:
+  show_dates: true  # Display creation/modification dates on pages
+
+# Hero Section
+# ------------
+# The large header area on the homepage with logo, name, and tagline.
+hero:
+  enabled: true
+  starfield: true
+  name: false
+  logo: img/orangelogo.png
 
 # Author Information
 # ------------------
-# Author metadata for display in the landing page sidebar
-# You can add additional fields: github, orcid, affiliation, homepage
 authors:
   - name: Thomas Monks
     role: Author
@@ -48,7 +56,6 @@ authors:
     email: t.m.w.monks@exeter.ac.uk
     github: https://github.com/TomMonks
     orcid: 0000-0003-2631-4481
-    # homepage: 
   - name: Amy Heather
     role: Author
     affiliation: University of Exeter
@@ -121,3 +128,9 @@ jupyter: python3
 #       - SimpleClass          # Methods documented inline (default)
 #
 # After editing, run 'great-docs build' to generate your documentation.
+
+# Theme
+# ---------------
+navbar_color:
+  light: "#C76E00"
+  dark: "#0A2540"
