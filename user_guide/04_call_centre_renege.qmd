@@ -38,7 +38,7 @@ from json2ciw.schema import ProcessModel
 
 ```{python}
 import ciw
-from IPython.display import JSON
+import json
 from rich import print
 ```
 
@@ -46,12 +46,7 @@ from rich import print
 
 ```{python}
 json_network = load_renege_call_model()
-```
-
-Display as collapsible JSON.  Expand to view the details.
-
-```{python}
-JSON(json_network)
+print(json.dumps(json_network, indent=2))
 ```
 
 ## 3. Convert to a ProcessModel
