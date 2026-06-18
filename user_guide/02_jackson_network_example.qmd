@@ -7,7 +7,7 @@ On this page we will create a `ciw` network model from a specification in a JSON
 
 The model represents a a classic queuing network problem that can be formulated as an Open Jackson Network.
 
-![](/img/jackson_network_sketch.png){width=80% fig-align="center" fig-alt="Jackson network"}
+![](img/jackson_network_sketch.png){width=80% fig-align="center" fig-alt="Jackson network"}
 
 ## 1. Imports
 
