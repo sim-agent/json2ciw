@@ -7,9 +7,9 @@ from .engine import CiwConverter, multiple_replications
 from .results import summarise_results, tidy_to_wide_format, create_user_filtered_hist
 from .ui import render_simulation_app
 
-# define what is exported
+# Only these objects will be possible to import from package:
 __all__ = [
-    "load_model_file"
+    "load_model_file",
     "load_call_centre_model",
     "CiwConverter",
     "multiple_replications",
@@ -17,6 +17,4 @@ __all__ = [
     "render_simulation_app",
     "tidy_to_wide_format",
     "create_user_filtered_hist",
-    "__version__",
-    "__author__"
 ]
