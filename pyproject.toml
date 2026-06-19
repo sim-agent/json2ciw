@@ -34,6 +34,7 @@ dependencies = [
 dev = [
     "great-docs",
     "hatch",
+    "lintquarto",
     "matplotlib",
     "pytest",
     "rich",
@@ -70,4 +71,12 @@ lint.per-file-ignores."tests/*" = [
     "ANN",
     "PLR2004",
     "SLF001",
+]
+
+[tool.lintquarto]
+linters = [
+    "ruff",
+]
+paths = [
+    "."
 ]

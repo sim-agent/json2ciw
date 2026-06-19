@@ -16,6 +16,7 @@ Format and lint the code:
 ```bash
 ruff format
 ruff check --fix
+lintquarto
 ```
 
 ## Documentation
