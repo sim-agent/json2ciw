@@ -189,11 +189,8 @@ class ProcessModel(BaseModel):
         >>> print(model.to_mermaid())
         >>> model.to_mermaid(include_resources=False)
         """
-        lines = ["```mermaid", "graph TD"]
-        
-        if self.description:
-            lines.append(f"    %% {self.name}: {self.description}")
-        
+        lines = ["flowchart TD"]
+
         def make_node_id(name: str) -> str:
             return name.replace(" ", "_").replace("-", "_")
         
@@ -265,8 +262,7 @@ class ProcessModel(BaseModel):
             else:
                 prob_label = f"{transition.probability:.0%}"
                 lines.append(f'    {source_id} -->|{prob_label}| {target_id}')
-        
-        lines.append("```")
+
         return "\n".join(lines)
 
     def display_diagram(self, include_resources: bool = True):
@@ -276,9 +272,6 @@ class ProcessModel(BaseModel):
     def save_diagram(self, filename: str, include_resources: bool = True):
         mermaid_code = self.to_mermaid(include_resources=include_resources)
         with open(filename, 'w') as f:
-            f.write(f"# {self.name}\n\n")
-            if self.description:
-                f.write(f"{self.description}\n\n")
             f.write(mermaid_code)
 
     def get_distributions_df(self) -> pd.DataFrame:

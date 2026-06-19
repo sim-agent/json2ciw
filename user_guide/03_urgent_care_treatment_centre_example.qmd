@@ -1,148 +1,118 @@
 ---
 title: Open Network with lognormal service times
-jupyter: python3
+guide-section: "Examples"
 ---
 
-On this page we will create a `ciw` network model from a specification in a JSON file.
+In this example, the model represents a simple three node network problem with lognormal service times.
 
-The model represents a simple three node network problem with lognormal service times.
+The JSON for this built-in example can be loaded using `json2ciw.datasets.load_three_node_network_model`.
 
-## 1. Imports
-
-### 1.1 `json2ciw` imports
-
-**We will use:**
-
-*  `load_three_node_network_model` function that loads the built in urgent care call centre JSON file.
-*  `ProcessModel`: a `pydantic` schema that provides automatic validation of the JSON.
-* `CiwConverter` that accepts a valid `ProcessModel` that represents a DES model and returns a `ciw` parameter `dict`.
-* `multiple_replications`:runs the network model and results a `Dataframe` of replication results.
-* `summarise_results`: provides a formatted table of mean results for each node in the network.
-* `tidy_to_wide_format`: the results from `multiple_replications` are returned in tidy (stacked row) format. This function converts into wide format i.e. each column is a performance measure.
-* `create_user_filtered_hist` generates a interactive plotly chart to view replications for each performance measure. It requires replication data in **wide** format.
+## Imports
 
 ```{python}
+import ciw
+import json
+from rich import print
+
 from json2ciw.datasets import load_three_node_network_model
 from json2ciw.engine import (
     CiwConverter,
     multiple_replications
 )
 from json2ciw.results import (
-    summarise_results, 
+    summarise_results,
+    tidy_to_wide_format
 )
-
 from json2ciw.schema import ProcessModel
 ```
 
-### 1.2 Other imports
-
-```{python}
-import ciw
-import json
-from rich import print
-```
-
-## 2. Load JSON
+## Load JSON
 
 ```{python}
 json_network = load_three_node_network_model()
 print(json.dumps(json_network, indent=2))
 ```
 
-## 3. Convert to a ProcessModel
-
-A `ProcessModel` is a `pydantic` schema. It is independent of `ciw`. This early version will automatically validate that the JSON file is correct and that all transitions add up to 1.0 when it is created.  
+## Validate with `ProcessModel`
 
 ```{python}
 model_instance = ProcessModel(**json_network)
 ```
-
-The contents of the process model can be manually inspected by a developer as follows:
 
 ```{python}
 print(model_instance)
 ```
 
 ```{python}
-model_instance.display_diagram(include_resources=False)
+model_instance.save_diagram("urgentcare.mmd", include_resources=False)
+```
+
+```{mermaid}
+%%| file: urgentcare.mmd
 ```
 
 ```{python}
-model_instance.display_diagram(include_resources=True)
+model_instance.save_diagram("urgentcare_resources.mmd", include_resources=True)
+```
+
+```{mermaid}
+%%| file: urgentcare_resources.mmd
 ```
 
 ```{python}
-# summary of distributions
 model_instance.get_distributions_df()
 ```
 
 ```{python}
-# summary of routing percentages
 model_instance.get_routing_matrix_df()
 ```
 
 ```{python}
-# resources
 model_instance.get_resources_df()
 ```
 
-## 3. Convert to a `ciw` Network Model
+## Convert to `ciw` parameters
 
 ```{python}
 adapter = CiwConverter(model_instance)
 network_params = adapter.generate_params()
-```
-
-The variable `network_params` is a python `dict` that contains all the parameters that `ciw` requires for a very simple queuing model. This can be passed as keyword args to the `ciw.create_network` function.
-
-```{python}
 network_params
 ```
 
-```{python}
-# we use ciw's native `create_network` method
-network = ciw.create_network(**network_params)
-print(type(network))
-```
+## Build and run the `ciw` model
 
 ```{python}
-# Run a quick simulation to verify it works without crashing...
+network = ciw.create_network(**network_params)
 sim = ciw.Simulation(network)
 sim.simulate_until_max_time(50)
 print("Quick simulation run worked!")
 ```
 
-## 4. Run the model for multiple replications
-
-The `multiple_replications` function returns a `DataFrame` that contains one row per activity per replication.  So if there are two nodes there are two rows for each replication.
+## Run the model for multiple replications
 
 ```{python}
-# Run replications with activity/resource names
 df_reps = multiple_replications(
     network, 
     model_instance, 
-    num_reps=100, 
+    num_reps=5, 
     runtime=2880,
     warmup=1440,
-    n_jobs=-1 # parallel reps
+    n_jobs=-1,
 )
 
 df_reps.head()
 ```
 
-Filter the nodes with the usual `pandas` syntax
+## Convert to wide format
 
 ```{python}
-df_reps.loc[df_reps['activity_name'] == "Service 1"].head(3)
+wide = tidy_to_wide_format(df_reps)
+wide.head()
 ```
 
-## 5. Summarise results
-
-If needed there is a built in function to create a `DataFrame` that contains a mean summary of all metrics across the nodes.
+## Summarise results
 
 ```{python}
-# Get summary table
 summary = summarise_results(df_reps)
 summary.round(1)
 ```
-
