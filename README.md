@@ -11,21 +11,25 @@ A simple tool for converting JSON files into functional Ciw simulation models.
 
 If you reuse any of the code, or this project supports your work, please provide a citation. The recommended citation detailed are maintained in `CITATION.cff`.
 
-## Installation instructions
+## Development installation instructions
 
-All dependencies are listed in [`binder/environment.yml`](https://github.com/sim-agent/json2ciw/blob/main/binder/environment.yml) and are pulled from conda-forge. To run the code locally, we recommend installing [miniforge](https://github.com/conda-forge/miniforge);
+All dependencies are listed in `pyproject.toml`. To run the code locally, we recommend installing [miniforge](https://github.com/conda-forge/miniforge);
 
 > Miniforge is Free and Open Source Software (FOSS) alternative to Anaconda and miniconda that uses conda-forge as the default channel for packages. It installs both `conda` and `mamba` (a drop in replacement for conda) package managers.  We recommend `mamba` for faster resolving of dependencies and installation of packages. 
 
 Navigate to the repository directory in your terminal (or command prompt), then create the environment:
 
 ```bash
-mamba env create -f binder/environment.yml
+mamba create -n json2ciw python=3.12
+mamba activate json2ciw
+pip install -e .
+pip install --group dev
 ```
 
-Activate the environment:
+Alternatively, a fixed environment is provided in `binder/environment.yml`:
 
 ```bash
+mamba env create -f binder/environment.yml
 mamba activate json2ciw
 ```
 
