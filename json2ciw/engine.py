@@ -1,6 +1,6 @@
 import ciw
 import math
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, Tuple
 from .schema import ProcessModel
 import statistics
 import pandas as pd

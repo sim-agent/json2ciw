@@ -16,7 +16,6 @@ a simple call centre model.
 
 import pytest
 import json
-from pathlib import Path
 from unittest.mock import patch
 
 # functions to test

@@ -155,14 +155,14 @@ def render_simulation_app(
         # Arrival Distribution (Conditional Header)
         arr_dist_data = default_params["arrival_distributions"][i]
         if arr_dist_data is not None:
-            st.sidebar.markdown(f"**Arrival Distribution**")
+            st.sidebar.markdown("**Arrival Distribution**")
         arr_dist = _render_distribution_ui(arr_dist_data, node_name, "Arrival")
         updated_params["arrival_distributions"].append(arr_dist)
 
         # Service Distribution (Conditional Header)
         srv_dist_data = default_params["service_distributions"][i]
         if srv_dist_data is not None:
-            st.sidebar.markdown(f"**Service Distribution**")
+            st.sidebar.markdown("**Service Distribution**")
         srv_dist = _render_distribution_ui(srv_dist_data, node_name, "Service")
         updated_params["service_distributions"].append(srv_dist)
 
@@ -170,7 +170,7 @@ def render_simulation_app(
         # TM added v0.10.0
         renege_dist_data = default_params["reneging_time_distributions"][i]
         if renege_dist_data is not None:
-            st.sidebar.markdown(f"**Renege Distribution**")
+            st.sidebar.markdown("**Renege Distribution**")
         renege_dist = _render_distribution_ui(
             renege_dist_data, node_name, "Renege"
         )
