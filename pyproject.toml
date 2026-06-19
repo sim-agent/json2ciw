@@ -51,3 +51,7 @@ path = "json2ciw/__init__.py"
 include = [
     "/json2ciw",
 ]
+
+[tool.ruff]
+line-length=79  # PEP-8
+format.quote-style="double"

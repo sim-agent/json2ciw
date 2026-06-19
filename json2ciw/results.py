@@ -97,7 +97,9 @@ def tidy_to_wide_format(
         If True, wide-format columns include resource names as well.
     """
     if include_resource_in_colname:
-        activity = df_reps["activity_name"] + " (" + df_reps["resource_name"] + ")"
+        activity = (
+            df_reps["activity_name"] + " (" + df_reps["resource_name"] + ")"
+        )
     else:
         activity = df_reps["activity_name"]
 
@@ -121,13 +123,11 @@ def tidy_to_wide_format(
 
     df_metrics = df_reps[["rep", "activity"] + metric_cols]
 
-    wide = (
-        df_metrics
-        .set_index(["rep", "activity"])
-        .unstack("activity")
-    )
+    wide = df_metrics.set_index(["rep", "activity"]).unstack("activity")
 
-    wide.columns = [f"{metric} [{activity}]" for metric, activity in wide.columns]
+    wide.columns = [
+        f"{metric} [{activity}]" for metric, activity in wide.columns
+    ]
 
     wide = wide.reset_index().set_index("rep")
 
@@ -161,7 +161,10 @@ def create_user_filtered_hist(results: pd.DataFrame) -> go.Figure:
             dict(
                 method="restyle",
                 label=col,
-                args=[{"x": [results[col].dropna()], "type": "histogram"}, [0]],
+                args=[
+                    {"x": [results[col].dropna()], "type": "histogram"},
+                    [0],
+                ],
             )
         )
 

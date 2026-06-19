@@ -7,16 +7,17 @@ import pandas as pd
 
 from joblib import delayed, Parallel
 
+
 class CiwConverter:
     def __init__(self, model):
         self.model = model
 
     def generate_params(self) -> dict:
         """
-        Converts the agnostic ProcessModel into a dictionary of parameters 
+        Converts the agnostic ProcessModel into a dictionary of parameters
         compatible with ciw.create_network(**params).
         """
-        
+
         # 1. Map Activity Names to Integer Indices
         # Ciw networks are index-based (0, 1, 2...), but our JSON is name-based.
         # We assume the order in the list is the order of the nodes.
@@ -35,11 +36,15 @@ class CiwConverter:
             number_of_servers.append(act.resource.capacity)
 
             # -- Service Distribution (Mandatory) --
-            service_distributions.append(self._make_ciw_dist(act.service_distribution))
+            service_distributions.append(
+                self._make_ciw_dist(act.service_distribution)
+            )
 
             # -- Arrival Distribution (Optional) --
             if act.arrival_distribution:
-                arrival_distributions.append(self._make_ciw_dist(act.arrival_distribution))
+                arrival_distributions.append(
+                    self._make_ciw_dist(act.arrival_distribution)
+                )
             else:
                 # If no arrival distribution is specified in JSON, it means no external arrivals
                 # None = old NoArrivals pre ciw v3
@@ -48,22 +53,26 @@ class CiwConverter:
             # -- Renege Distribution (Optional) --
             # TM Added v0.10.0
             if act.renege_distribution:
-                reneging_time_distributions.append(self._make_ciw_dist(act.renege_distribution))
+                reneging_time_distributions.append(
+                    self._make_ciw_dist(act.renege_distribution)
+                )
             else:
                 reneging_time_distributions.append(None)
 
         # 4. Build Routing Matrix (Process Flow -> Probability Matrix)
         # Initialize an N x N matrix with 0.0
         routing = [[0.0] * n_nodes for _ in range(n_nodes)]
-        
+
         for t in self.model.transitions:
             # We only care about transitions between internal nodes.
             # Transitions to "Exit" are implicit in Ciw (1.0 - sum(row)).
             if t.target != "Exit":
                 # Validate that nodes exist (Pydantic validates types, but not logic across lists)
                 if t.source not in node_map or t.target not in node_map:
-                    raise ValueError(f"Transition references unknown node: {t.source} -> {t.target}")
-                
+                    raise ValueError(
+                        f"Transition references unknown node: {t.source} -> {t.target}"
+                    )
+
                 u_idx = node_map[t.source]
                 v_idx = node_map[t.target]
                 routing[u_idx][v_idx] = t.probability
@@ -74,11 +83,13 @@ class CiwConverter:
             "arrival_distributions": arrival_distributions,
             "service_distributions": service_distributions,
             "reneging_time_distributions": reneging_time_distributions,
-            "routing": routing
+            "routing": routing,
         }
-    
+
     @staticmethod
-    def _normal_moments_from_lognormal(m: float, v: float) -> Tuple[float, float]:
+    def _normal_moments_from_lognormal(
+        m: float, v: float
+    ) -> Tuple[float, float]:
         """
         Calculate mu and sigma of the normal distribution underlying
         a lognormal with mean m and variance v.
@@ -89,7 +100,7 @@ class CiwConverter:
         mu = math.log(m**2 / phi)
         sigma = math.sqrt(math.log(phi**2 / m**2))
         return mu, sigma
-    
+
     def _extract_std(self, dist_obj, params):
         """Help to extract standard deviation from parameters
         Handles, 'sd', 'std', 'var', 'stdev'."""
@@ -104,44 +115,50 @@ class CiwConverter:
         for alias in sd_alias:
             if alias in params:
                 return params[alias]
-         
+
         # throw exception if sd not supplied
-        err_msg = f"{dist_obj.name} is type {dist_obj.type} and requires a" \
+        err_msg = (
+            f"{dist_obj.name} is type {dist_obj.type} and requires a"
             + "standard deviation param. None provided. Please review distributions."
+        )
         raise AttributeError(err_msg)
-            
 
     def _make_ciw_dist(self, dist_obj):
         """Helper to convert Pydantic Distribution model to Ciw Object"""
         p = dist_obj.parameters
-        
+
         if dist_obj.type == "exponential":
             if "rate" in p:
                 return ciw.dists.Exponential(p["rate"])
             elif "mean" in p:
-                return ciw.dists.Exponential(1/p["mean"])
+                return ciw.dists.Exponential(1 / p["mean"])
         elif dist_obj.type == "triangular":
             return ciw.dists.Triangular(p["min"], p["mode"], p["max"])
         elif dist_obj.type == "uniform":
             return ciw.dists.Uniform(p["min"], p["max"])
         elif dist_obj.type == "deterministic":
-             return ciw.dists.Deterministic(p["value"])
+            return ciw.dists.Deterministic(p["value"])
         # ADDED 0.6.0: Lognormal mapping with math conversion
         elif dist_obj.type == "lognormal":
-             m = p["mean"]
-             v = self._extract_std(dist_obj, p) ** 2
-             mu, sigma = CiwConverter._normal_moments_from_lognormal(m, v)
-             # 0.7.0 fixed param: "standard_deviation" should be "sd"
-             return ciw.dists.Lognormal(mean=mu, sd=sigma)
+            m = p["mean"]
+            v = self._extract_std(dist_obj, p) ** 2
+            mu, sigma = CiwConverter._normal_moments_from_lognormal(m, v)
+            # 0.7.0 fixed param: "standard_deviation" should be "sd"
+            return ciw.dists.Lognormal(mean=mu, sd=sigma)
         # ADDED 0.6.0: Gamma mapping
         elif dist_obj.type == "gamma":
-             return ciw.dists.Gamma(shape=p["shape"], scale=p["scale"])
+            return ciw.dists.Gamma(shape=p["shape"], scale=p["scale"])
         # ADDED 0.7.0: Normal mapping
         elif dist_obj.type == "normal":
-            # normal expects mean and sd            
-            return ciw.dists.Normal(mean=p["mean"], sd=self._extract_std(dist_obj, p))
+            # normal expects mean and sd
+            return ciw.dists.Normal(
+                mean=p["mean"], sd=self._extract_std(dist_obj, p)
+            )
         else:
-             raise ValueError(f"Unsupported distribution type for json2ciw: {dist_obj.type}")
+            raise ValueError(
+                f"Unsupported distribution type for json2ciw: {dist_obj.type}"
+            )
+
 
 def multiple_replications(
     network: ciw.Network,
@@ -183,7 +200,7 @@ def multiple_replications(
     -------
     pd.DataFrame
         DataFrame with one row per node per replication containing:
-        
+
         - rep : int
             Replication number (0-indexed)
         - node_id : int
@@ -227,12 +244,12 @@ def multiple_replications(
             runtime=runtime,
         )
         for rep in range(num_reps)
-
     )
     # Flatten list-of-lists of row dicts
     records = [row for rep_rows in results for row in rep_rows]
 
     return pd.DataFrame.from_records(records)
+
 
 def _single_run(
     network: ciw.Network,
@@ -353,8 +370,12 @@ def _single_run(
         n_service = len(service_recs)
         n_renege = len(renege_recs)
 
-        mean_wait_service = statistics.mean(service_waits) if service_waits else 0.0
-        mean_wait_renege = statistics.mean(renege_waits) if renege_waits else 0.0
+        mean_wait_service = (
+            statistics.mean(service_waits) if service_waits else 0.0
+        )
+        mean_wait_renege = (
+            statistics.mean(renege_waits) if renege_waits else 0.0
+        )
         mean_wait_all = statistics.mean(all_waits) if all_waits else 0.0
         mean_service = statistics.mean(service_times) if service_times else 0.0
 
@@ -379,12 +400,13 @@ def _single_run(
 
         # if add in renege wait if needed.
         if meta.get("has_reneging", False):
-            row.update({
-                "n_renege": n_renege,
-                "mean_wait_renege": mean_wait_renege,
-                "mean_wait_all": mean_wait_all,
-            })
-
+            row.update(
+                {
+                    "n_renege": n_renege,
+                    "mean_wait_renege": mean_wait_renege,
+                    "mean_wait_all": mean_wait_all,
+                }
+            )
 
         rows.append(row)
 
