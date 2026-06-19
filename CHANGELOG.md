@@ -23,8 +23,8 @@ Code peer review and reformatting/styling by @amyheather and creation of `great-
 
 * Set package to require Python 3.11+ as that is required by `great-docs`.
 * **Environment**:
-    * Add `great-docs` and `ruff
-    * Removed `jupyter` and `nbqa`.
+    * Add `great-docs` and `ruff`.
+    * Removed `jupyter`, `nbqa`, `black` and `flake8`.
 * **Examples**: converted from `.ipynb` to `.qmd`, stored in `user_guide/`, and moved the explanation to a separate page in the guide, so these now contain less duplicate information.
 * `README`: tidy up, remove jupyter-lab instructions, remove diagram as easy to go stale.
 * **Citation:** add @amyheather.
