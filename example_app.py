@@ -1,7 +1,8 @@
+"""Example app. To run: `streamlit run example_app.py`."""
+
 import ciw
 import streamlit as st
 
-from json2ciw import render_simulation_app
 from json2ciw.datasets import (
     load_call_centre_model,
     load_jackson_network_model,
@@ -12,6 +13,7 @@ from json2ciw.datasets import (
 )
 from json2ciw.engine import CiwConverter
 from json2ciw.schema import ProcessModel
+from json2ciw.ui import render_simulation_app
 
 st.set_page_config(layout="wide")
 
