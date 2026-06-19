@@ -122,8 +122,6 @@ class CiwConverter:
     ) -> tuple[float, float]:
         """Convert lognormal moments to normal moments.
 
-        TM added (from sim-tools) 0.6.0.
-
         Parameters
         ----------
         mean : float
@@ -203,17 +201,13 @@ class CiwConverter:
             return ciw.dists.Uniform(p["min"], p["max"])
         if dist_obj.type == "deterministic":
             return ciw.dists.Deterministic(p["value"])
-        # ADDED 0.6.0: Lognormal mapping with math conversion
         if dist_obj.type == "lognormal":
             m = p["mean"]
             v = self._extract_std(dist_obj, p) ** 2
             mu, sigma = CiwConverter.normal_moments_from_lognormal(m, v)
-            # 0.7.0 fixed param: "standard_deviation" should be "sd"
             return ciw.dists.Lognormal(mean=mu, sd=sigma)
-        # ADDED 0.6.0: Gamma mapping
         if dist_obj.type == "gamma":
             return ciw.dists.Gamma(shape=p["shape"], scale=p["scale"])
-        # ADDED 0.7.0: Normal mapping
         if dist_obj.type == "normal":
             # normal expects mean and sd
             return ciw.dists.Normal(

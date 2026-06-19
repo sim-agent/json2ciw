@@ -26,7 +26,6 @@ class Distribution(BaseModel):
 
     """
 
-    # ADDED: lognormal and gamma. Normal 0.7.0
     type: Literal[
         "exponential",
         "triangular",
