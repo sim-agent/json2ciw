@@ -7,7 +7,8 @@ import pytest
 
 # functions to test
 from json2ciw.datasets import (
-    CALL_CENTRE_PATH,
+    CALL_CENTRE,
+    MODELS_DIR,
     load_call_centre_model,
     load_model_file,
 )
@@ -65,4 +66,4 @@ def test_load_call_centre_model_uses_correct_default():
         assert result == {"status": "mocked"}
 
         # check it called the internal function with the specific constant
-        mock_load.assert_called_once_with(CALL_CENTRE_PATH)
+        mock_load.assert_called_once_with(MODELS_DIR / CALL_CENTRE)
