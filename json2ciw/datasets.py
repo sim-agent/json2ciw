@@ -1,3 +1,5 @@
+"""Load example process model specifications.."""
+
 import json
 from os import PathLike
 from pathlib import Path
@@ -26,7 +28,7 @@ def load_model_file(file_path: str | PathLike[str]) -> dict[str, Any]:
         Parsed JSON model specification.
 
     """
-    with open(file_path) as file:
+    with Path.open(file_path) as file:
         return json.load(file)
 
 

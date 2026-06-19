@@ -1,4 +1,4 @@
-"""Engine."""
+"""Convert process models to Ciw inputs and run simulations."""
 
 import math
 import statistics
