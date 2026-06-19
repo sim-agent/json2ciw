@@ -1,38 +1,46 @@
+"""Summarise and reshape simulation output for analysis and plotting."""
+
 import pandas as pd
 import plotly.graph_objects as go
+
+DEFAULT_METRICS = {
+    "mean_n_service": "Mean completed services",
+    "mean_wait": "Mean waiting time",
+    "mean_service": "Mean service time",
+    "mean_utilisation": "Mean utilisation",
+    "mean_Lq": "Mean queue length",
+    "mean_n_renege": "Mean reneges",
+    "mean_renege_rate": "Mean reneging rate",
+    "mean_wait_renege": "Mean reneging wait",
+    "mean_wait_all": "Mean wait (all completed)",
+}
 
 
 def summarise_results(
     df_reps: pd.DataFrame,
     metric_name_map: dict[str, str] | None = None,
+    *,
     include_resource_in_colname: bool = True,
 ) -> pd.DataFrame:
-    """
-    Aggregate replication results and transpose so metrics are rows
-    and activity names are columns.
+    """Summarise replication results by activity.
 
     Parameters
     ----------
-    df_reps : pd.DataFrame
-        Raw tidy-format replication results from multiple_replications().
+    df_reps : pandas.DataFrame
+        Tidy-format replication results from multiple_replications().
     metric_name_map : dict or None, optional
         Dictionary mapping internal metric names to friendly names.
-        If None, default friendly names are used. Pass {} to keep original names.
+        If None, default friendly names are used. Pass empty dictionary to
+        keep original names.
     include_resource_in_colname : bool, default True
-        If True, column headers include both activity and resource name.
-    """
-    DEFAULT_METRICS = {
-        "mean_n_service": "Mean completed services",
-        "mean_wait": "Mean waiting time",
-        "mean_service": "Mean service time",
-        "mean_utilisation": "Mean utilisation",
-        "mean_Lq": "Mean queue length",
-        "mean_n_renege": "Mean reneges",
-        "mean_renege_rate": "Mean reneging rate",
-        "mean_wait_renege": "Mean reneging wait",
-        "mean_wait_all": "Mean wait (all completed)",
-    }
+        Whether to include resource names in output column labels.
 
+    Returns
+    -------
+    pandas.DataFrame
+        Summary table with metrics as rows and activities as columns.
+
+    """
     if metric_name_map is None:
         metric_name_map = DEFAULT_METRICS
 
@@ -69,7 +77,7 @@ def summarise_results(
     else:
         summary["activity"] = summary["activity_name"]
 
-    metric_cols = ["activity"] + list(agg_spec.keys())
+    metric_cols = ["activity", *list(agg_spec.keys())]
     summary = summary[metric_cols]
 
     summary = summary.set_index("activity").T
@@ -83,21 +91,28 @@ def summarise_results(
 
 def tidy_to_wide_format(
     df_reps: pd.DataFrame,
+    *,
     include_resource_in_colname: bool = False,
 ) -> pd.DataFrame:
-    """
-    Return replication results in wide format:
-    one row per replication, one column per (metric, activity[/resource]).
+    """Convert tidy replication results to wide format.
 
     Parameters
     ----------
-    df_reps : pd.DataFrame
-        Tidy replication results from multiple_replications().
+    df_reps : pandas.DataFrame
+        Tidy-format replication results from multiple_replications().
     include_resource_in_colname : bool, default False
-        If True, wide-format columns include resource names as well.
+        Whether to include resource names in output column labels.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Wide-format replication results with one row per replication.
+
     """
     if include_resource_in_colname:
-        activity = df_reps["activity_name"] + " (" + df_reps["resource_name"] + ")"
+        activity = (
+            df_reps["activity_name"] + " (" + df_reps["resource_name"] + ")"
+        )
     else:
         activity = df_reps["activity_name"]
 
@@ -119,75 +134,76 @@ def tidy_to_wide_format(
     ]
     metric_cols.extend([c for c in optional_cols if c in df_reps.columns])
 
-    df_metrics = df_reps[["rep", "activity"] + metric_cols]
+    df_metrics = df_reps[["rep", "activity", *metric_cols]]
 
-    wide = (
-        df_metrics
-        .set_index(["rep", "activity"])
-        .unstack("activity")
+    wide = df_metrics.pivot_table(
+        index="rep",
+        columns="activity",
+        values=metric_cols,
+        aggfunc="first",
     )
 
-    wide.columns = [f"{metric} [{activity}]" for metric, activity in wide.columns]
-
-    wide = wide.reset_index().set_index("rep")
+    wide.columns = [
+        f"{metric} [{activity}]" for metric, activity in wide.columns
+    ]
 
     return wide
 
 
 def create_user_filtered_hist(results: pd.DataFrame) -> go.Figure:
-    """
-    Create a Plotly histogram with a dropdown that lets the user
-    choose which metric to display.
+    """Create an interactive histogram for selected result columns.
 
     Parameters
     ----------
-    results : pd.DataFrame
-        Wide-format results with one row per replication and one
-        column per KPI.
+    results : pandas.DataFrame
+        Wide-format replication results with one column per measure.
 
     Returns
     -------
     plotly.graph_objects.Figure
-        Interactive histogram figure.
+        Histogram figure with a metric selection dropdown.
+
     """
     fig = go.Figure()
 
     first_col = results.columns[0]
     fig.add_trace(go.Histogram(x=results[first_col].dropna()))
 
-    buttons = []
-    for col in results.columns:
-        buttons.append(
-            dict(
-                method="restyle",
-                label=col,
-                args=[{"x": [results[col].dropna()], "type": "histogram"}, [0]],
-            )
-        )
+    buttons = [
+        {
+            "method": "restyle",
+            "label": col,
+            "args": [
+                {"x": [results[col].dropna()], "type": "histogram"},
+                [0],
+            ],
+        }
+        for col in results.columns
+    ]
 
     fig.update_layout(
         showlegend=False,
         updatemenus=[
-            dict(
-                buttons=buttons,
-                direction="down",
-                showactive=True,
-                x=0.25,
-                y=1.1,
-                xanchor="right",
-                yanchor="bottom",
-            )
+            {
+                "buttons": buttons,
+                "direction": "down",
+                "showactive": True,
+                "x": 0.25,
+                "y": 1.1,
+                "xanchor": "right",
+                "yanchor": "bottom",
+            }
         ],
         annotations=[
-            dict(
-                text="Performance measure",
-                x=0,
-                xref="paper",
-                y=1.25,
-                yref="paper",
-                align="left",
-                showarrow=False,
-            )
+            {
+                "text": "Performance measure",
+                "x": 0,
+                "xref": "paper",
+                "y": 1.25,
+                "yref": "paper",
+                "align": "left",
+                "showarrow": False,
+            }
         ],
     )
 

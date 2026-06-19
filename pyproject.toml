@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "json2ciw"
 dynamic = ["version"]
-description = "A python package to convert JSON file to working Ciw DES models"
+description = "A python package to convert JSON files into working Ciw DES models"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
@@ -32,13 +32,13 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "black",
-    "flake8",
     "great-docs",
     "hatch",
+    "lintquarto",
     "matplotlib",
     "pytest",
-    "rich"
+    "rich",
+    "ruff"
 ]
 
 [project.urls]
@@ -51,4 +51,41 @@ path = "json2ciw/__init__.py"
 [tool.hatch.build.targets.sdist]
 include = [
     "/json2ciw",
+]
+
+[tool.ruff]
+line-length=79  # PEP-8
+format.quote-style="double"
+lint.select = ["ALL"]
+lint.ignore = [
+    "D203",
+    "D213",
+    "COM812",
+    "BLE001",  # Do not catch blind exception
+    "C901",  # Too complex
+    "PLR0911",  # Too many return statements
+    "PLR0912",  # Too many branches
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0915",  # Too many statements
+    "ANN401",  # Dynamically typed expressions disallowed
+]
+lint.per-file-ignores."tests/*" = [
+    "INP001",
+    "S101",
+    "ANN",
+    "PLR2004",
+    "SLF001",
+]
+lint.per-file-ignores."user_guide/*" = [
+    "D100",  # Missing docstring in public module
+    "T201",  # Print found
+    "A004",  # Import shadowing a Python builtin
+]
+
+[tool.lintquarto]
+linters = [
+    "ruff",
+]
+paths = [
+    "user_guide"
 ]

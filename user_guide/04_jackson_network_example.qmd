@@ -1,35 +1,33 @@
 ---
-title: Open Network with lognormal service times
+title: Open Jackson Network Model
 guide-section: "Examples"
 ---
 
-In this example, the model represents a simple three node network problem with lognormal service times.
+In this example, the model represents a a classic queuing network problem that can be formulated as an Open Jackson Network.
 
-The JSON for this built-in example can be loaded using `json2ciw.datasets.load_three_node_network_model`.
+The JSON for this built-in example can be loaded using `json2ciw.datasets.load_jackson_network_model`.
+
+![](img/jackson_network_sketch.png){width=80% fig-align="center" fig-alt="Jackson network"}
 
 ## Imports
 
 ```{python}
-import ciw
 import json
+
+import ciw
 from rich import print
 
-from json2ciw.datasets import load_three_node_network_model
-from json2ciw.engine import (
-    CiwConverter,
-    multiple_replications
-)
-from json2ciw.results import (
-    summarise_results,
-    tidy_to_wide_format
-)
+from json2ciw.datasets import load_jackson_network_model
+from json2ciw.engine import CiwConverter, multiple_replications
+from json2ciw.results import summarise_results, tidy_to_wide_format
 from json2ciw.schema import ProcessModel
+
 ```
 
 ## Load JSON
 
 ```{python}
-json_network = load_three_node_network_model()
+json_network = load_jackson_network_model()
 print(json.dumps(json_network, indent=2))
 ```
 
@@ -44,19 +42,15 @@ print(model_instance)
 ```
 
 ```{python}
-model_instance.save_diagram("urgentcare.mmd", include_resources=False)
+model_instance.save_diagram("jackson.mmd")
 ```
 
 ```{mermaid}
-%%| file: urgentcare.mmd
+%%| file: jackson.mmd
 ```
 
 ```{python}
-model_instance.save_diagram("urgentcare_resources.mmd", include_resources=True)
-```
-
-```{mermaid}
-%%| file: urgentcare_resources.mmd
+model_instance.display_diagram(include_resources=True)
 ```
 
 ```{python}
@@ -76,7 +70,7 @@ model_instance.get_resources_df()
 ```{python}
 adapter = CiwConverter(model_instance)
 network_params = adapter.generate_params()
-network_params
+print(network_params)
 ```
 
 ## Build and run the `ciw` model
@@ -92,9 +86,9 @@ print("Quick simulation run worked!")
 
 ```{python}
 df_reps = multiple_replications(
-    network, 
-    model_instance, 
-    num_reps=5, 
+    network,
+    model_instance,
+    num_reps=5,
     runtime=2880,
     warmup=1440,
     n_jobs=-1,

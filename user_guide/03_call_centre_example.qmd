@@ -1,45 +1,46 @@
 ---
-title: Open Jackson Network Model
+title: Ciw Call Centre Model
 guide-section: "Examples"
 ---
 
-In this example, the model represents a a classic queuing network problem that can be formulated as an Open Jackson Network.
+In this example, the model represents a simple urgent care call centre defined in [Monks and Harper (2023)](https://openresearch.nihr.ac.uk/articles/3-48). 
 
-The JSON for this built-in example can be loaded using `json2ciw.datasets.load_jackson_network_model`.
+Features of the model:
 
-![](img/jackson_network_sketch.png){width=80% fig-align="center" fig-alt="Jackson network"}
+* Single random arrival process
+* Two activities for call triage (by an operator resource) and nurse call back (by a nurse).
+* Only 40% of patients require a nurse call back by default.
+
+The JSON for this built-in example can be loaded using `json2ciw.datasets.load_call_centre_model`.
+
+![](img/call_centre_diagram.png){width=80% fig-align="center" fig-alt="Call centre diagram"}
 
 ## Imports
 
 ```{python}
-import ciw
 import json
-from rich import print
-import statistics
 
-from json2ciw.datasets import load_jackson_network_model
-from json2ciw.engine import (
-    CiwConverter,
-    multiple_replications
-)
-from json2ciw.results import (
-    summarise_results,
-    tidy_to_wide_format
-)
+import ciw
+from rich import print
+
+from json2ciw.datasets import load_call_centre_model
+from json2ciw.engine import CiwConverter, multiple_replications
+from json2ciw.results import summarise_results, tidy_to_wide_format
 from json2ciw.schema import ProcessModel
+
 ```
 
 ## Load JSON
 
 ```{python}
-json_network = load_jackson_network_model()
-print(json.dumps(json_network, indent=2))
+json_call_centre = load_call_centre_model()
+print(json.dumps(json_call_centre, indent=2))
 ```
 
 ## Validate with `ProcessModel`
 
 ```{python}
-model_instance = ProcessModel(**json_network)
+model_instance = ProcessModel(**json_call_centre)
 ```
 
 ```{python}
@@ -47,15 +48,11 @@ print(model_instance)
 ```
 
 ```{python}
-model_instance.save_diagram("jackson.mmd")
+model_instance.save_diagram("callcentre.mmd")
 ```
 
 ```{mermaid}
-%%| file: jackson.mmd
-```
-
-```{python}
-model_instance.display_diagram(include_resources=True)
+%%| file: callcentre.mmd
 ```
 
 ```{python}
@@ -75,7 +72,7 @@ model_instance.get_resources_df()
 ```{python}
 adapter = CiwConverter(model_instance)
 network_params = adapter.generate_params()
-network_params
+print(network_params)
 ```
 
 ## Build and run the `ciw` model
@@ -91,9 +88,9 @@ print("Quick simulation run worked!")
 
 ```{python}
 df_reps = multiple_replications(
-    network, 
-    model_instance, 
-    num_reps=5, 
+    network,
+    model_instance,
+    num_reps=5,
     runtime=2880,
     warmup=1440,
     n_jobs=-1,
