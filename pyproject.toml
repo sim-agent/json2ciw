@@ -76,11 +76,15 @@ lint.per-file-ignores."tests/*" = [
     "PLR2004",
     "SLF001",
 ]
+lint.per-file-ignores."user_guide/*" = [
+    "D100",  # Missing docstring in public module
+    "T201",  # Print found
+]
 
 [tool.lintquarto]
 linters = [
     "ruff",
 ]
 paths = [
-    "."
+    "user_guide"
 ]

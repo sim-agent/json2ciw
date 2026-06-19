@@ -12,21 +12,15 @@ The JSON for this built-in example can be loaded using `json2ciw.datasets.load_j
 ## Imports
 
 ```{python}
-import ciw
 import json
-from rich import print
-import statistics
+
+import ciw
 
 from json2ciw.datasets import load_jackson_network_model
-from json2ciw.engine import (
-    CiwConverter,
-    multiple_replications
-)
-from json2ciw.results import (
-    summarise_results,
-    tidy_to_wide_format
-)
+from json2ciw.engine import CiwConverter, multiple_replications
+from json2ciw.results import summarise_results, tidy_to_wide_format
 from json2ciw.schema import ProcessModel
+
 ```
 
 ## Load JSON
@@ -75,7 +69,7 @@ model_instance.get_resources_df()
 ```{python}
 adapter = CiwConverter(model_instance)
 network_params = adapter.generate_params()
-network_params
+print(network_params)
 ```
 
 ## Build and run the `ciw` model
@@ -91,9 +85,9 @@ print("Quick simulation run worked!")
 
 ```{python}
 df_reps = multiple_replications(
-    network, 
-    model_instance, 
-    num_reps=5, 
+    network,
+    model_instance,
+    num_reps=5,
     runtime=2880,
     warmup=1440,
     n_jobs=-1,
