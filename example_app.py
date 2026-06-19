@@ -1,18 +1,17 @@
-from json2ciw.datasets import (
-    load_call_centre_model, 
-    load_jackson_network_model, 
-    load_three_node_network_model,
-    load_six_node_ucc_model,
-    load_renege_call_model,
-    load_mm1_renege_model,
-    
-)
-from json2ciw.engine import CiwConverter
-from json2ciw import render_simulation_app
-from json2ciw.schema import ProcessModel
-
 import ciw
 import streamlit as st
+
+from json2ciw import render_simulation_app
+from json2ciw.datasets import (
+    load_call_centre_model,
+    load_jackson_network_model,
+    load_mm1_renege_model,
+    load_renege_call_model,
+    load_six_node_ucc_model,
+    load_three_node_network_model,
+)
+from json2ciw.engine import CiwConverter
+from json2ciw.schema import ProcessModel
 
 st.set_page_config(layout="wide")
 
@@ -28,8 +27,7 @@ model_loaders = {
 
 # Create a dropdown to select the model
 selected_model_name = st.selectbox(
-    "Select Model", 
-    options=list(model_loaders.keys())
+    "Select Model", options=list(model_loaders.keys())
 )
 
 # 1. Load the selected model as JSON
@@ -47,4 +45,6 @@ default_params = adapter.generate_params()
 network = ciw.create_network(**default_params)
 
 # 5. Render the model as an app
-render_simulation_app(default_params, json_model, valid_process_model=model_instance)
+render_simulation_app(
+    default_params, json_model, valid_process_model=model_instance
+)

@@ -55,3 +55,16 @@ include = [
 [tool.ruff]
 line-length=79  # PEP-8
 format.quote-style="double"
+lint.select = ["ALL"]
+lint.ignore = [
+    "D203",
+    "D213",
+    "COM812",
+]
+lint.per-file-ignores."tests/*" = [
+    "INP001",
+    "S101",
+    "ANN",
+    "PLR2004",
+    "SLF001",
+]

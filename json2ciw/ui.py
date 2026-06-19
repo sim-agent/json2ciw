@@ -1,14 +1,14 @@
-"""
-Convert a valid JSON and Ciw network model to a streamlit user interface
+"""Convert a valid JSON and Ciw network model to a streamlit user interface
 """
 
-import streamlit as st
-import pandas as pd
 import ciw
-from .engine import multiple_replications, CiwConverter
+import pandas as pd
+import streamlit as st
+
+from .engine import CiwConverter, multiple_replications
 from .results import (
-    summarise_results,
     create_user_filtered_hist,
+    summarise_results,
     tidy_to_wide_format,
 )
 
@@ -32,7 +32,7 @@ def _render_distribution_ui(dist, node_name, dist_type):
         )
         return type(dist)(rate=rate)
 
-    elif dist_class == "Triangular":
+    if dist_class == "Triangular":
         col1, col2, col3 = st.sidebar.columns(3)
         lower = col1.number_input(
             "Lower",
@@ -54,7 +54,7 @@ def _render_distribution_ui(dist, node_name, dist_type):
         )
         return type(dist)(lower=lower, mode=mode, upper=upper)
 
-    elif dist_class == "Uniform":
+    if dist_class == "Uniform":
         col1, col2 = st.sidebar.columns(2)
         lower = col1.number_input(
             "Lower", value=float(dist.lower), key=f"{dist_type}_ul_{node_name}"
@@ -64,14 +64,14 @@ def _render_distribution_ui(dist, node_name, dist_type):
         )
         return type(dist)(lower=lower, upper=upper)
 
-    elif dist_class == "Deterministic":
+    if dist_class == "Deterministic":
         value = st.sidebar.number_input(
             "Value", value=float(dist.value), key=f"{dist_type}_d_{node_name}"
         )
         return type(dist)(value=value)
 
     # ADDED: v0.7.0
-    elif dist_class == "Lognormal":
+    if dist_class == "Lognormal":
         col1, col2 = st.sidebar.columns(2)
         mean = col1.number_input(
             "mean", value=float(dist.mean), key=f"{dist_type}_ul_{node_name}"
@@ -85,7 +85,7 @@ def _render_distribution_ui(dist, node_name, dist_type):
         return type(dist)(mean=mu, sd=sigma)
 
     # ADDED: v0.7.0
-    elif dist_class == "Normal":
+    if dist_class == "Normal":
         col1, col2 = st.sidebar.columns(2)
         mean = col1.number_input(
             "mean", value=float(dist.mean), key=f"{dist_type}_ul_{node_name}"
@@ -95,22 +95,22 @@ def _render_distribution_ui(dist, node_name, dist_type):
         )
         return type(dist)(mean=mean, sd=sd)
 
-    else:
-        st.sidebar.warning(
-            f"UI for {dist_class} not implemented. Using defaults."
-        )
-        return dist
+    st.sidebar.warning(
+        f"UI for {dist_class} not implemented. Using defaults."
+    )
+    return dist
 
 
 def render_simulation_app(
     default_params, model_metadata, valid_process_model=None
 ):
-    """Main function to render the simulation UI and execute the model."""
-
+    """Render the simulation UI and execute the model."""
     # --- UI: MAIN HEADER ---
     st.title(model_metadata.get("name", "Discrete Event Simulation Runner"))
     st.markdown(
-        f"**Description:** {model_metadata.get('description', 'No description provided.')}"
+        f"**Description:** {
+            model_metadata.get('description', 'No description provided.')
+        }"
     )
 
     num_nodes = len(default_params["number_of_servers"])
@@ -216,7 +216,8 @@ def render_simulation_app(
     # --- MAIN PANEL: EXECUTION ---
     if st.button("Run Simulation", type="primary", width="content"):
         with st.spinner(
-            f"Running {num_reps} replications of {model_metadata.get('name', 'the model')}..."
+            f"Running {num_reps} replications of " + 
+            f"{model_metadata.get('name', 'the model')}..."
         ):
             try:
                 network = ciw.create_network(**updated_params)
@@ -243,4 +244,4 @@ def render_simulation_app(
                     st.dataframe(df_reps_wide, width="stretch")
 
             except Exception as e:
-                st.error(f"Simulation Error: {str(e)}")
+                st.error(f"Simulation Error: {e!s}")

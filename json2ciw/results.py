@@ -7,8 +7,7 @@ def summarise_results(
     metric_name_map: dict[str, str] | None = None,
     include_resource_in_colname: bool = True,
 ) -> pd.DataFrame:
-    """
-    Aggregate replication results and transpose so metrics are rows
+    """Aggregate replication results and transpose so metrics are rows
     and activity names are columns.
 
     Parameters
@@ -20,6 +19,7 @@ def summarise_results(
         If None, default friendly names are used. Pass {} to keep original names.
     include_resource_in_colname : bool, default True
         If True, column headers include both activity and resource name.
+
     """
     DEFAULT_METRICS = {
         "mean_n_service": "Mean completed services",
@@ -85,8 +85,7 @@ def tidy_to_wide_format(
     df_reps: pd.DataFrame,
     include_resource_in_colname: bool = False,
 ) -> pd.DataFrame:
-    """
-    Return replication results in wide format:
+    """Return replication results in wide format:
     one row per replication, one column per (metric, activity[/resource]).
 
     Parameters
@@ -95,6 +94,7 @@ def tidy_to_wide_format(
         Tidy replication results from multiple_replications().
     include_resource_in_colname : bool, default False
         If True, wide-format columns include resource names as well.
+
     """
     if include_resource_in_colname:
         activity = (
@@ -135,8 +135,7 @@ def tidy_to_wide_format(
 
 
 def create_user_filtered_hist(results: pd.DataFrame) -> go.Figure:
-    """
-    Create a Plotly histogram with a dropdown that lets the user
+    """Create a Plotly histogram with a dropdown that lets the user
     choose which metric to display.
 
     Parameters
@@ -149,6 +148,7 @@ def create_user_filtered_hist(results: pd.DataFrame) -> go.Figure:
     -------
     plotly.graph_objects.Figure
         Interactive histogram figure.
+
     """
     fig = go.Figure()
 

@@ -1,11 +1,12 @@
-import ciw
 import math
-from typing import Dict, Any, Tuple
-from .schema import ProcessModel
 import statistics
-import pandas as pd
+from typing import Any
 
-from joblib import delayed, Parallel
+import ciw
+import pandas as pd
+from joblib import Parallel, delayed
+
+from .schema import ProcessModel
 
 
 class CiwConverter:
@@ -13,11 +14,9 @@ class CiwConverter:
         self.model = model
 
     def generate_params(self) -> dict:
-        """
-        Converts the agnostic ProcessModel into a dictionary of parameters
+        """Converts the agnostic ProcessModel into a dictionary of parameters
         compatible with ciw.create_network(**params).
         """
-
         # 1. Map Activity Names to Integer Indices
         # Ciw networks are index-based (0, 1, 2...), but our JSON is name-based.
         # We assume the order in the list is the order of the nodes.
@@ -89,9 +88,8 @@ class CiwConverter:
     @staticmethod
     def _normal_moments_from_lognormal(
         m: float, v: float
-    ) -> Tuple[float, float]:
-        """
-        Calculate mu and sigma of the normal distribution underlying
+    ) -> tuple[float, float]:
+        """Calculate mu and sigma of the normal distribution underlying
         a lognormal with mean m and variance v.
 
         Note: TM added (from sim-tools) 0.6.0
@@ -103,8 +101,8 @@ class CiwConverter:
 
     def _extract_std(self, dist_obj, params):
         """Help to extract standard deviation from parameters
-        Handles, 'sd', 'std', 'var', 'stdev'."""
-
+        Handles, 'sd', 'std', 'var', 'stdev'.
+        """
         sd_alias = ["sd", "std", "stdev"]
 
         # check for special case of var first
@@ -119,7 +117,7 @@ class CiwConverter:
         # throw exception if sd not supplied
         err_msg = (
             f"{dist_obj.name} is type {dist_obj.type} and requires a"
-            + "standard deviation param. None provided. Please review distributions."
+             "standard deviation param. None provided. Please review distributions."
         )
         raise AttributeError(err_msg)
 
@@ -130,7 +128,7 @@ class CiwConverter:
         if dist_obj.type == "exponential":
             if "rate" in p:
                 return ciw.dists.Exponential(p["rate"])
-            elif "mean" in p:
+            if "mean" in p:
                 return ciw.dists.Exponential(1 / p["mean"])
         elif dist_obj.type == "triangular":
             return ciw.dists.Triangular(p["min"], p["mode"], p["max"])
@@ -168,8 +166,7 @@ def multiple_replications(
     warmup: float = 0.0,
     n_jobs: int = -1,
 ) -> pd.DataFrame:
-    """
-    Run multiple replications of a Ciw simulation and collect performance metrics.
+    """Run multiple replications of a Ciw simulation and collect performance metrics.
 
     Executes independent replications of a discrete event simulation, collecting
     node performance measures including arrivals, waiting times, service times,
@@ -221,6 +218,7 @@ def multiple_replications(
             Time-averaged server utilisation (fraction busy)
         - mean_Lq : float
             Time-averaged mean number of customers in queue
+
     """
     # Build a mapping from node_id (1-indexed) to activity/resource info
     node_metadata = {}
@@ -253,13 +251,12 @@ def multiple_replications(
 
 def _single_run(
     network: ciw.Network,
-    node_metadata: dict[int, Dict[str, Any]],
+    node_metadata: dict[int, dict[str, Any]],
     rep: int = 0,
     warmup: float = 0.0,
     runtime: float = 1000.0,
 ):
-    """
-    Run a single Ciw replication and aggregate node-level performance metrics.
+    """Run a single Ciw replication and aggregate node-level performance metrics.
 
     Executes one independent replication of the queueing network, collecting
     time-averaged and per-customer measures for each transitive node. Results
@@ -336,6 +333,7 @@ def _single_run(
     at some point.
 
     Since version 0.10.0 will return reneging stats if a node has a reneging distribution.
+
     """
     ciw.seed(rep)
     Q = ciw.Simulation(network)

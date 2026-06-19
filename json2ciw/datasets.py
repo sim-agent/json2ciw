@@ -1,7 +1,6 @@
 import json
-from typing import Dict, Any
-
 from pathlib import Path
+from typing import Any
 
 # arrivals -> operator service -> % nurse call back or exit -> exit
 CALL_CENTRE_FILE_NAME = "call_centre.json"
@@ -38,9 +37,8 @@ MM1_RENEGE_PATH = Path(__file__).parent.joinpath(
 )
 
 
-def load_model_file(file_path: str) -> Dict[str, Any]:
-    """
-    Load a JSON specification for a call centre model from a file.
+def load_model_file(file_path: str) -> dict[str, Any]:
+    """Load a JSON specification for a call centre model from a file.
 
     Parameters
     ----------
@@ -63,14 +61,14 @@ def load_model_file(file_path: str) -> Dict[str, Any]:
         If the file content is not valid JSON.
     OSError
         If there are permissions issues or other I/O errors opening the file.
+
     """
-    with open(file_path, "r") as file:
+    with open(file_path) as file:
         return json.load(file)
 
 
-def load_call_centre_model() -> Dict[str, Any]:
-    """
-    Load a JSON specification for a call centre model from a file.
+def load_call_centre_model() -> dict[str, Any]:
+    """Load a JSON specification for a call centre model from a file.
 
     Returns
     -------
@@ -87,13 +85,13 @@ def load_call_centre_model() -> Dict[str, Any]:
         If the file content is not valid JSON.
     OSError
         If there are permissions issues or other I/O errors opening the file.
+
     """
     return load_model_file(CALL_CENTRE_PATH)
 
 
-def load_jackson_network_model() -> Dict[str, Any]:
-    """
-    Load a JSON specification for a classic open jackson network
+def load_jackson_network_model() -> dict[str, Any]:
+    """Load a JSON specification for a classic open jackson network
     problem from file.
 
     Returns
@@ -111,13 +109,13 @@ def load_jackson_network_model() -> Dict[str, Any]:
         If the file content is not valid JSON.
     OSError
         If there are permissions issues or other I/O errors opening the file.
+
     """
     return load_model_file(JACKSON_NETWORK_PATH)
 
 
-def load_three_node_network_model() -> Dict[str, Any]:
-    """
-    Load a JSON specification for a simple node network
+def load_three_node_network_model() -> dict[str, Any]:
+    """Load a JSON specification for a simple node network
     with mixed distribution types from file
 
     Returns
@@ -135,13 +133,13 @@ def load_three_node_network_model() -> Dict[str, Any]:
         If the file content is not valid JSON.
     OSError
         If there are permissions issues or other I/O errors opening the file.
+
     """
     return load_model_file(THREE_NODE_PATH)
 
 
-def load_six_node_ucc_model() -> Dict[str, Any]:
-    """
-    Load a JSON specification for a Urgent care centre
+def load_six_node_ucc_model() -> dict[str, Any]:
+    """Load a JSON specification for a Urgent care centre
     with mixed distribution types and six nodes
 
     Returns
@@ -159,13 +157,13 @@ def load_six_node_ucc_model() -> Dict[str, Any]:
         If the file content is not valid JSON.
     OSError
         If there are permissions issues or other I/O errors opening the file.
+
     """
     return load_model_file(SIX_NODE_UCC_PATH)
 
 
-def load_renege_call_model() -> Dict[str, Any]:
-    """
-    Load a JSON specification for a Urgent care call
+def load_renege_call_model() -> dict[str, Any]:
+    """Load a JSON specification for a Urgent care call
     centre with calls that renege if they wait for too long
 
     Returns
@@ -183,13 +181,13 @@ def load_renege_call_model() -> Dict[str, Any]:
         If the file content is not valid JSON.
     OSError
         If there are permissions issues or other I/O errors opening the file.
+
     """
     return load_model_file(RENEGE_PATH)
 
 
-def load_mm1_renege_model() -> Dict[str, Any]:
-    """
-    Load a JSON specification for a M/M/1 with
+def load_mm1_renege_model() -> dict[str, Any]:
+    """Load a JSON specification for a M/M/1 with
     customers that renege if they wait for too long
 
     Returns
@@ -207,5 +205,6 @@ def load_mm1_renege_model() -> Dict[str, Any]:
         If the file content is not valid JSON.
     OSError
         If there are permissions issues or other I/O errors opening the file.
+
     """
     return load_model_file(MM1_RENEGE_PATH)

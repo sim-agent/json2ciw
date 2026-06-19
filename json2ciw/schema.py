@@ -1,5 +1,4 @@
-"""
-Pydantic schema definitions for validating and visualizing queuing network models.
+"""Pydantic schema definitions for validating and visualizing queuing network models.
 
 This module provides data structures to represent discrete event simulation models
 compatible with the Ciw library. It includes validation logic for network topology
@@ -7,11 +6,12 @@ and transition probabilities, as well as functionality to generate Mermaid
 flowcharts for visual verification of the model structure.
 """
 
-from typing import List, Literal, Dict, Optional, Set
-from pydantic import BaseModel, Field, model_validator
 from collections import defaultdict
-from IPython.display import Markdown, display
+from typing import Literal
+
 import pandas as pd
+from IPython.display import Markdown, display
+from pydantic import BaseModel, Field, model_validator
 
 
 class Distribution(BaseModel):
@@ -25,7 +25,7 @@ class Distribution(BaseModel):
         "gamma",
         "normal",
     ]
-    parameters: Dict[str, float]
+    parameters: dict[str, float]
 
 
 class Resource(BaseModel):
@@ -38,9 +38,9 @@ class Activity(BaseModel):
     type: str
     resource: Resource
     service_distribution: Distribution
-    arrival_distribution: Optional[Distribution] = None
+    arrival_distribution: Distribution | None = None
     # added v0.10.0
-    renege_distribution: Optional[Distribution] = None
+    renege_distribution: Distribution | None = None
 
 
 class Transition(BaseModel):
@@ -51,13 +51,13 @@ class Transition(BaseModel):
 
 class ProcessModel(BaseModel):
     name: str
-    description: Optional[str] = None
-    activities: List[Activity]
-    transitions: List[Transition]
+    description: str | None = None
+    activities: list[Activity]
+    transitions: list[Transition]
 
     @model_validator(mode="after")
     def validate_transition_rows(self) -> "ProcessModel":
-        activity_names: Set[str] = {a.name for a in self.activities}
+        activity_names: set[str] = {a.name for a in self.activities}
         allowed_targets = activity_names | {"Exit"}
 
         probs_by_source = defaultdict(float)
@@ -102,8 +102,7 @@ class ProcessModel(BaseModel):
     def _format_dist(
         self, dist: Distribution, context: str = "service"
     ) -> str:
-        """
-        Format a distribution as a human-readable string for Mermaid labels.
+        """Format a distribution as a human-readable string for Mermaid labels.
 
         Parameters
         ----------
@@ -130,6 +129,7 @@ class ProcessModel(BaseModel):
         ``'uniform'``, ``'deterministic'``, ``'lognormal'``, ``'gamma'``, and
         ``'normal'``. Unrecognised types fall back to returning the raw type
         string.
+
         """
         p = dist.parameters
 
@@ -161,8 +161,7 @@ class ProcessModel(BaseModel):
         return params
 
     def to_mermaid(self, include_resources: bool = True) -> str:
-        """
-        Convert the process model to a Mermaid flowchart string.
+        """Convert the process model to a Mermaid flowchart string.
 
         Generates a ``graph TD`` Mermaid diagram representing the queuing
         network, including arrival sources, activity nodes, optional resource
@@ -205,6 +204,7 @@ class ProcessModel(BaseModel):
         --------
         >>> print(model.to_mermaid())
         >>> model.to_mermaid(include_resources=False)
+
         """
         lines = ["flowchart TD"]
 
