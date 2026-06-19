@@ -61,10 +61,12 @@ lint.ignore = [
     "D203",
     "D213",
     "COM812",
+    "BLE001",  # Do not catch blind exception
     "C901",  # Too complex
     "PLR0911",  # Too many return statements
     "PLR0912",  # Too many branches
     "PLR0913",  # Too many arguments in function definition
+    "PLR0915",  # Too many statements
     "ANN401",  # Dynamically typed expressions disallowed
 ]
 lint.per-file-ignores."tests/*" = [

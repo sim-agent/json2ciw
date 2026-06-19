@@ -118,7 +118,7 @@ class CiwConverter:
         }
 
     @staticmethod
-    def _normal_moments_from_lognormal(
+    def normal_moments_from_lognormal(
         mean: float, variance: float
     ) -> tuple[float, float]:
         """Convert lognormal moments to normal moments.
@@ -208,7 +208,7 @@ class CiwConverter:
         if dist_obj.type == "lognormal":
             m = p["mean"]
             v = self._extract_std(dist_obj, p) ** 2
-            mu, sigma = CiwConverter._normal_moments_from_lognormal(m, v)
+            mu, sigma = CiwConverter.normal_moments_from_lognormal(m, v)
             # 0.7.0 fixed param: "standard_deviation" should be "sd"
             return ciw.dists.Lognormal(mean=mu, sd=sigma)
         # ADDED 0.6.0: Gamma mapping

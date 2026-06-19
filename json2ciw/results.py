@@ -77,7 +77,7 @@ def summarise_results(
     else:
         summary["activity"] = summary["activity_name"]
 
-    metric_cols = ["activity" , *list(agg_spec.keys())]
+    metric_cols = ["activity", *list(agg_spec.keys())]
     summary = summary[metric_cols]
 
     summary = summary.set_index("activity").T
@@ -148,6 +148,7 @@ def tidy_to_wide_format(
     ]
 
     return wide
+
 
 def create_user_filtered_hist(results: pd.DataFrame) -> go.Figure:
     """Create an interactive histogram for selected result columns.

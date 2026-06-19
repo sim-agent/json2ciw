@@ -207,8 +207,8 @@ class ProcessModel(BaseModel):
             label = f"Exponential(mean={params['mean']:.1f})"
         elif dist.type == "triangular":
             label = (
-                f"Triangular({params.get('min', 0)}, ", +
-                f"{params.get('mode', 0)}, {params.get('max', 0)})"
+                f"Triangular({params.get('min', 0)}, ",
+                +f"{params.get('mode', 0)}, {params.get('max', 0)})",
             )
         elif dist.type == "uniform":
             label = f"Uniform({params.get('min', 0)}, {params.get('max', 0)})"
@@ -357,10 +357,7 @@ class ProcessModel(BaseModel):
         display(Markdown(mermaid_code))
 
     def save_diagram(
-        self,
-        filename: str,
-        *,
-        include_resources: bool = True
+        self, filename: str, *, include_resources: bool = True
     ) -> None:
         """Save the Mermaid diagram to a file.
 
@@ -444,8 +441,8 @@ class ProcessModel(BaseModel):
 
         for transition in self.transitions:
             if (
-                transition.source in matrix.index and
-                transition.target in matrix.columns
+                transition.source in matrix.index
+                and transition.target in matrix.columns
             ):
                 matrix.loc[transition.source, transition.target] = (
                     transition.probability
