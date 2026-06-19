@@ -32,13 +32,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "black",
-    "flake8",
     "great-docs",
     "hatch",
     "matplotlib",
     "pytest",
-    "rich"
+    "rich",
+    "ruff"
 ]
 
 [project.urls]
