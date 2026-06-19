@@ -44,11 +44,19 @@ print(model_instance)
 ```
 
 ```{python}
-model_instance.display_diagram(include_resources=False)
+model_instance.save_diagram("urgentcare.mmd", include_resources=False)
+```
+
+```{mermaid}
+%%| file: urgentcare.mmd
 ```
 
 ```{python}
-model_instance.display_diagram(include_resources=True)
+model_instance.save_diagram("urgentcare_resources.mmd", include_resources=True)
+```
+
+```{mermaid}
+%%| file: urgentcare_resources.mmd
 ```
 
 ```{python}
