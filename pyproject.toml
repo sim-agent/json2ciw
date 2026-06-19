@@ -60,6 +60,9 @@ lint.ignore = [
     "D203",
     "D213",
     "COM812",
+    "PLR0911",  # Too many return statements
+    "PLR0913",  # Too many arguments in function definition
+    "ANN401",  # Dynamically typed expressions disallowed
 ]
 lint.per-file-ignores."tests/*" = [
     "INP001",
