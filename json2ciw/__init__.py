@@ -1,6 +1,6 @@
 """json2ciw."""
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"
 
 from .datasets import (
     load_call_centre_model,

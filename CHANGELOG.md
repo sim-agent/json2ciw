@@ -5,7 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates formatted as YYYY-MM-DD as per [ISO standard](https://www.iso.org/iso-8601-date-and-time-format.html).
 
-Consistent identifier (represents all versions, resolves to latest): 
+Consistent identifier (represents all versions, resolves to latest): https://doi.org/10.5281/zenodo.18879546.
+
+## 0.11.0 (2026-06-19)
+
+Code peer review and reformatting/styling by @amyheather and creation of `great-docs` documentation site.
+
+## Added
+
+* Add `CONTRIBUTING.md`.
+* Add `all-contributors`.
+* Add `great-docs` documentation site.
+* Add GitHub actions to check for alt-text, deploy documentation, check for linting issues, and run tests.
+* Add some basic smoke tests.
+
+## Changed
+
+* Set package to require Python 3.11+ as that is required by `great-docs`.
+* **Environment**:
+    * Add `great-docs` and `ruff
+    * Removed `jupyter` and `nbqa`.
+* **Examples**: converted from `.ipynb` to `.qmd`, stored in `user_guide/`, and moved the explanation to a separate page in the guide, so these now contain less duplicate information.
+* `README`: tidy up, remove jupyter-lab instructions, remove diagram as easy to go stale.
+* **Citation:** add @amyheather.
+* **Style:** Linting and formatting package, tests and documentation to be compliant with a wide range of ruff rules.
+
+## Fixed
+
+* Amended `ProcessModel.to_mermaid` to only return Mermaid, not markdown, as that was very jupyter-specific and didn't work in quarto site.
 
 ## 0.10.0
 
