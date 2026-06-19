@@ -1,0 +1,36 @@
+name: Lint package and documentation
+run-name: Lint package and documentation
+
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: main
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Create uv virtualenv
+        run: uv venv
+
+      - name: Install dependencies from pyproject.toml
+        run: |
+          uv pip install -e .
+          uv pip install --group dev
+
+      - name: Run Ruff check on package
+        run: uv run ruff check .
+      
+      - name: Run Ruff check on code in documentation
+        run: uv run lintquarto
