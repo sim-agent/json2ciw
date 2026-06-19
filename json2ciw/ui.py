@@ -1,5 +1,6 @@
-"""Convert a valid JSON and Ciw network model to a streamlit user interface
-"""
+"""Create a Streamlit user interface."""
+
+from typing import Any
 
 import ciw
 import pandas as pd
@@ -11,10 +12,31 @@ from .results import (
     summarise_results,
     tidy_to_wide_format,
 )
+from .schema import ProcessModel
 
 
-def _render_distribution_ui(dist, node_name, dist_type):
-    """Dynamically generates Streamlit UI inputs based on the ciw distribution type."""
+def _render_distribution_ui(
+    dist: Any,
+    node_name: str,
+    dist_type: str,
+) -> Any | None:
+    """Render sidebar controls based on included distributions.
+
+    Parameters
+    ----------
+    dist : Any
+        Ciw distribution object.
+    node_name : str
+        Node name used in widget keys.
+    dist_type : str
+        Distribution role label used in widget keys.
+
+    Returns
+    -------
+    Any or None
+        Updated distribution object, or `None` if no distribution is set.
+
+    """
     if dist is None:
         return None
 
@@ -80,8 +102,8 @@ def _render_distribution_ui(dist, node_name, dist_type):
             "sd", value=float(dist.sd), key=f"{dist_type}_uu_{node_name}"
         )
 
-        # convert to mu sigma of the undelying normal
-        mu, sigma = CiwConverter._normal_moments_from_lognormal(mean, sd)
+        # convert to mu sigma of the underlying normal
+        mu, sigma = CiwConverter.normal_moments_from_lognormal(mean, sd)
         return type(dist)(mean=mu, sd=sigma)
 
     # ADDED: v0.7.0
@@ -95,23 +117,35 @@ def _render_distribution_ui(dist, node_name, dist_type):
         )
         return type(dist)(mean=mean, sd=sd)
 
-    st.sidebar.warning(
-        f"UI for {dist_class} not implemented. Using defaults."
-    )
+    st.sidebar.warning(f"UI for {dist_class} not implemented. Using defaults.")
     return dist
 
 
 def render_simulation_app(
-    default_params, model_metadata, valid_process_model=None
-):
-    """Render the simulation UI and execute the model."""
+    default_params: dict[str, Any],
+    model_metadata: dict[str, Any],
+    valid_process_model: ProcessModel | None = None,
+) -> None:
+    """Render the simulation app and run the selected model.
+
+    Parameters
+    ----------
+    default_params : dict of str to Any
+        Default Ciw network parameters.
+    model_metadata : dict of str to Any
+        Model metadata used to label the interface.
+    valid_process_model : ProcessModel or None, optional
+        Validated process model passed to the simulation engine, by
+        default `None`.
+
+    """
     # --- UI: MAIN HEADER ---
     st.title(model_metadata.get("name", "Discrete Event Simulation Runner"))
-    st.markdown(
-        f"**Description:** {
-            model_metadata.get('description', 'No description provided.')
-        }"
+    description = model_metadata.get(
+        "description",
+        "No description provided.",
     )
+    st.markdown(f"**Description:** {description}")
 
     num_nodes = len(default_params["number_of_servers"])
 
@@ -133,34 +167,34 @@ def render_simulation_app(
         "routing": [],
     }
 
-    for i in range(num_nodes):
-        node_name = node_names[i]
+    for index in range(num_nodes):
+        node_name = node_names[index]
         st.sidebar.subheader(f"{node_name}")
 
         # Extract specific resource name if available in JSON
         resource_name = "Servers"
-        if i < len(activities) and "resource" in activities[i]:
-            resource_name = activities[i]["resource"]["name"]
+        if index < len(activities) and "resource" in activities[index]:
+            resource_name = activities[index]["resource"]["name"]
 
         # Resourcing
         servers = st.sidebar.slider(
             f"Number of {resource_name}",
             min_value=1,
             max_value=50,
-            value=int(default_params["number_of_servers"][i]),
+            value=int(default_params["number_of_servers"][index]),
             key=f"server_{node_name}",
         )
         updated_params["number_of_servers"].append(servers)
 
         # Arrival Distribution (Conditional Header)
-        arr_dist_data = default_params["arrival_distributions"][i]
+        arr_dist_data = default_params["arrival_distributions"][index]
         if arr_dist_data is not None:
             st.sidebar.markdown("**Arrival Distribution**")
         arr_dist = _render_distribution_ui(arr_dist_data, node_name, "Arrival")
         updated_params["arrival_distributions"].append(arr_dist)
 
         # Service Distribution (Conditional Header)
-        srv_dist_data = default_params["service_distributions"][i]
+        srv_dist_data = default_params["service_distributions"][index]
         if srv_dist_data is not None:
             st.sidebar.markdown("**Service Distribution**")
         srv_dist = _render_distribution_ui(srv_dist_data, node_name, "Service")
@@ -168,7 +202,7 @@ def render_simulation_app(
 
         # Reneging Distribution (Conditional Header)
         # TM added v0.10.0
-        renege_dist_data = default_params["reneging_time_distributions"][i]
+        renege_dist_data = default_params["reneging_time_distributions"][index]
         if renege_dist_data is not None:
             st.sidebar.markdown("**Renege Distribution**")
         renege_dist = _render_distribution_ui(
@@ -209,14 +243,14 @@ def render_simulation_app(
         edited_routing = st.data_editor(
             df_routing, key="routing_editor", width="stretch"
         )
-        updated_params["routing"] = edited_routing.values.tolist()
+        updated_params["routing"] = edited_routing.to_numpy().tolist()
 
     st.markdown("---")  # Visual separator before the run button
 
     # --- MAIN PANEL: EXECUTION ---
     if st.button("Run Simulation", type="primary", width="content"):
         with st.spinner(
-            f"Running {num_reps} replications of " + 
+            f"Running {num_reps} replications of "
             f"{model_metadata.get('name', 'the model')}..."
         ):
             try:
