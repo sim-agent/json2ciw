@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "json2ciw"
 dynamic = ["version"]
-description = "A python package to convert JSON file to working Ciw DES models"
+description = "A python package to convert JSON files into working Ciw DES models"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
@@ -61,7 +61,9 @@ lint.ignore = [
     "D203",
     "D213",
     "COM812",
+    "C901",  # Too complex
     "PLR0911",  # Too many return statements
+    "PLR0912",  # Too many branches
     "PLR0913",  # Too many arguments in function definition
     "ANN401",  # Dynamically typed expressions disallowed
 ]
