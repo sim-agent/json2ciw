@@ -88,7 +88,8 @@ df_reps = multiple_replications(
     model_instance, 
     num_reps=5, 
     runtime=2880,
-    warmup=1440
+    warmup=1440,
+    n_jobs=-1,
 )
 
 df_reps.head()
