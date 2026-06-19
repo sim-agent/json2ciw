@@ -1,0 +1,15 @@
+---
+title: JSON schema
+guide-section: "Getting Started"
+---
+
+`json2ciw` uses `ProcessModel` to validate the structure of a model before it is converted into a `ciw` network.
+
+If you want to inspect the expected schema directly, you can generate it from the Pydantic model:
+
+```{python}
+import json
+from json2ciw.schema import ProcessModel
+
+print(json.dumps(ProcessModel.model_json_schema(), indent=2))
+```
