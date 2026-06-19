@@ -23,8 +23,7 @@ from json2ciw.engine import (
     multiple_replications
 )
 from json2ciw.results import (
-    summarise_results, 
-    create_user_filtered_hist,
+    summarise_results,
     tidy_to_wide_format
 )
 from json2ciw.schema import ProcessModel
