@@ -7,7 +7,7 @@ On this page we will create a `ciw` network model from a specification in a JSON
 
 The model represents a a classic queuing network problem that can be formulated as an Open Jackson Network.
 
-![](/img/jackson_network_sketch.png){width=80% fig-align="center" fig-alt="Jackson network"}
+![](img/jackson_network_sketch.png){width=80% fig-align="center" fig-alt="Jackson network"}
 
 ## 1. Imports
 
@@ -42,21 +42,16 @@ from json2ciw.schema import ProcessModel
 
 ```{python}
 import ciw
-import statistics
-from IPython.display import JSON
+import json
 from rich import print
+import statistics
 ```
 
 ## 2. Load JSON
 
 ```{python}
 json_network = load_jackson_network_model()
-```
-
-display as collapsible JSON.  Expand to view the details.
-
-```{python}
-JSON(json_network)
+print(json.dumps(json_network, indent=2))
 ```
 
 ## 3. Convert to a ProcessModel

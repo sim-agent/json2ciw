@@ -28,9 +28,9 @@ dynamic: true
 # Logo & Favicon
 # ---------------
 logo:
-  light: img/whitelogo.png
-  dark: img/orangelogo.png
-favicon: img/favicon.png
+  light: assets/whitelogo.png
+  dark: assets/orangelogo.png
+favicon: favicon.png
 
 # Site Settings
 # -------------
@@ -45,7 +45,7 @@ hero:
   enabled: true
   starfield: true
   name: false
-  logo: img/orangelogo.png
+  logo: assets/orangelogo.png
 
 # Author Information
 # ------------------

@@ -9,16 +9,18 @@ pytest
 
 ## Documentation
 
-The documentation is created with [great-docs](https://posit-dev.github.io/great-docs/). To generate and render the site:
+The documentation is created with [great-docs](https://posit-dev.github.io/great-docs/).
+
+To generate the site and open in your browser:
 
 ```bash
-great-docs build
+great-docs build && great-docs preview
 ```
 
-To open in your browser:
+To keep the build process running and automatically rebuild when files change:
 
 ```bash
-great-docs preview
+great-docs build --watch
 ```
 
 ## All-contributors
