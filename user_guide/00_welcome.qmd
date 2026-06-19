@@ -1,0 +1,37 @@
+---
+title: Welcome to `json2ciw`
+---
+
+`json2ciw` lets you describe a discrete‑event simulation model in JSON and turn it into a runnable `ciw` network.
+
+## Basic workflow
+
+The basic workflow is:
+
+1. **Load a JSON model**  
+   Read a JSON file (or use a built‑in example) into Python.
+
+2. **Validate with `ProcessModel`**  
+   Create a `ProcessModel` from the JSON to check that the structure is valid and that routing and distributions are well‑formed.
+
+3. **Convert to `ciw` parameters**  
+   Use `CiwConverter` to turn the validated `ProcessModel` into a dictionary of parameters for `ciw`.
+
+4. **Build and run the `ciw` network**  
+   Pass those parameters to `ciw.create_network()`, then run simulations and analyse results with the helper functions in `json2ciw`.
+
+## Examples
+
+The documentation includes several worked examples that all follow this workflow:
+
+* **Urgent care call centre**  
+  A simple urgent care call centre model with call triage and nurse call‑back activities.
+
+* **Open Jackson network**  
+  A classic open queueing network used to demonstrate general routing structures.
+
+* **Three‑node network with lognormal service**  
+  A small open network example with lognormal service time distributions.
+
+* **Call centre with reneging**  
+  A variant of the urgent care call centre where callers may hang up if they wait too long.
