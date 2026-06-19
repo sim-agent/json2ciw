@@ -13,6 +13,7 @@ The JSON for this built-in example can be loaded using `json2ciw.datasets.load_t
 import json
 
 import ciw
+from rich import print
 
 from json2ciw.datasets import load_three_node_network_model
 from json2ciw.engine import CiwConverter, multiple_replications

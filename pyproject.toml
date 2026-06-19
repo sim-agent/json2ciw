@@ -79,6 +79,7 @@ lint.per-file-ignores."tests/*" = [
 lint.per-file-ignores."user_guide/*" = [
     "D100",  # Missing docstring in public module
     "T201",  # Print found
+    "A004",  # Import shadowing a Python builtin
 ]
 
 [tool.lintquarto]

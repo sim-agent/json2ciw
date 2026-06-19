@@ -10,6 +10,8 @@ If you want to inspect the expected schema directly, you can generate it from th
 ```{python}
 import json
 
+from rich import print
+
 from json2ciw.schema import ProcessModel
 
 print(json.dumps(ProcessModel.model_json_schema(), indent=2))
