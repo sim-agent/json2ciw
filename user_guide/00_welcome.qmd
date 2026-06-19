@@ -1,5 +1,6 @@
 ---
 title: Welcome to `json2ciw`
+guide-section: "Getting Started"
 ---
 
 `json2ciw` lets you describe a discrete‑event simulation model in JSON and turn it into a runnable `ciw` network.
@@ -19,6 +20,22 @@ The basic workflow is:
 
 4. **Build and run the `ciw` network**  
    Pass those parameters to `ciw.create_network()`, then run simulations and analyse results with the helper functions in `json2ciw`.
+
+## Running experiments and analysing results
+
+To support experimentation, `json2ciw` provides helper functions for running replications and summarising outputs:
+
+- **`multiple_replications`**  
+  Runs the network model for many replications and returns a tidy DataFrame with one row per activity per replication.  
+  For example, a model with two activities will produce two rows per replication.  
+  Replications can be run in parallel by setting `n_jobs`.
+
+- **`tidy_to_wide_format`**  
+  Converts the tidy output from `multiple_replications` into a wide format, where each performance measure becomes a separate column.  
+  This is often more convenient for plotting and user‑facing summaries.
+
+- **`summarise_results`**  
+  Produces a summary DataFrame containing mean results for each node in the network across replications.
 
 ## Examples
 
