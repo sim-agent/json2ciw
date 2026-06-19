@@ -92,7 +92,6 @@ def _render_distribution_ui(
         )
         return type(dist)(value=value)
 
-    # ADDED: v0.7.0
     if dist_class == "Lognormal":
         col1, col2 = st.sidebar.columns(2)
         mean = col1.number_input(
@@ -106,7 +105,6 @@ def _render_distribution_ui(
         mu, sigma = CiwConverter.normal_moments_from_lognormal(mean, sd)
         return type(dist)(mean=mu, sd=sigma)
 
-    # ADDED: v0.7.0
     if dist_class == "Normal":
         col1, col2 = st.sidebar.columns(2)
         mean = col1.number_input(
@@ -201,7 +199,6 @@ def render_simulation_app(
         updated_params["service_distributions"].append(srv_dist)
 
         # Reneging Distribution (Conditional Header)
-        # TM added v0.10.0
         renege_dist_data = default_params["reneging_time_distributions"][index]
         if renege_dist_data is not None:
             st.sidebar.markdown("**Renege Distribution**")

@@ -80,7 +80,6 @@ class CiwConverter:
                 arrival_distributions.append(None)
 
             # -- Renege Distribution (Optional) --
-            # TM Added v0.10.0
             if act.renege_distribution:
                 reneging_time_distributions.append(
                     self._make_ciw_dist(act.renege_distribution)
@@ -263,7 +262,6 @@ def multiple_replications(
             "activity_name": activity.name,
             "resource_name": activity.resource.name,
             "resource_capacity": activity.resource.capacity,
-            # added in v0.10.0
             "has_reneging": activity.renege_distribution is not None,
         }
 
@@ -323,7 +321,6 @@ def _single_run(
     sim = ciw.Simulation(network)
     sim.simulate_until_max_time(runtime)
 
-    # modified v0.10.0 - separate service and reneged
     recs = sim.get_all_records(only=["service", "renege"])
 
     # Warmup filter
@@ -337,12 +334,10 @@ def _single_run(
         node_id = node.id_number
         meta = node_metadata.get(node_id, {})
 
-        # split records - modified v0.10.0
         node_recs = [r for r in recs if r.node == node_id]
         service_recs = [r for r in node_recs if r.record_type == "service"]
         renege_recs = [r for r in node_recs if r.record_type == "renege"]
 
-        # separate and total waiting times v0.10.0
         service_waits = [r.waiting_time for r in service_recs]
         renege_waits = [r.waiting_time for r in renege_recs]
         all_waits = [r.waiting_time for r in node_recs]
@@ -366,7 +361,6 @@ def _single_run(
         total_wait_all = sum(all_waits)
         mean_lq = total_wait_all / horizon if horizon > 0 else 0.0
 
-        # default row - modified v0.10.0
         row = {
             "rep": rep,
             "node_id": node_id,

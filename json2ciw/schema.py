@@ -80,7 +80,6 @@ class Activity(BaseModel):
     resource: Resource
     service_distribution: Distribution
     arrival_distribution: Distribution | None = None
-    # added v0.10.0
     renege_distribution: Distribution | None = None
 
 
@@ -409,7 +408,6 @@ class ProcessModel(BaseModel):
                 }
             )
 
-            # added v0.10.0 to show renege parameters if present.
             if activity.renege_distribution:
                 ren = activity.renege_distribution
                 records.append(
