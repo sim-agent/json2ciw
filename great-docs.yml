@@ -30,7 +30,7 @@ dynamic: true
 logo:
   light: assets/whitelogo.png
   dark: assets/orangelogo.png
-favicon: favicon.png
+favicon: assets/favicon.png
 
 # Site Settings
 # -------------
