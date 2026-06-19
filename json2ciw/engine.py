@@ -1,3 +1,5 @@
+"""Engine."""
+
 import math
 import statistics
 from typing import Any
@@ -10,15 +12,42 @@ from .schema import ProcessModel
 
 
 class CiwConverter:
-    def __init__(self, model):
+    """Convert a process model into Ciw network parameters.
+
+    Parameters
+    ----------
+    model : ProcessModel
+        Process model to convert.
+
+    Attributes
+    ----------
+    model : ProcessModel
+        Process model to convert.
+
+    """
+
+    def __init__(self, model: ProcessModel) -> None:
+        """Initialise the converter.
+
+        Parameters
+        ----------
+        model : ProcessModel
+            Process model to convert.
+
+        """
         self.model = model
 
     def generate_params(self) -> dict:
-        """Converts the agnostic ProcessModel into a dictionary of parameters
-        compatible with ciw.create_network(**params).
+        """Generate Ciw network parameters from the process model.
+
+        Returns
+        -------
+        dict of str to Any
+            Parameters compatible with `ciw.create_network`.
+
         """
         # 1. Map Activity Names to Integer Indices
-        # Ciw networks are index-based (0, 1, 2...), but our JSON is name-based.
+        # Ciw networks are index-based (0, 1, 2...), but our JSON is name-based
         # We assume the order in the list is the order of the nodes.
         node_map = {act.name: i for i, act in enumerate(self.model.activities)}
         n_nodes = len(self.model.activities)
@@ -45,7 +74,8 @@ class CiwConverter:
                     self._make_ciw_dist(act.arrival_distribution)
                 )
             else:
-                # If no arrival distribution is specified in JSON, it means no external arrivals
+                # If no arrival distribution is specified in JSON, it means no
+                # external arrivals
                 # None = old NoArrivals pre ciw v3
                 arrival_distributions.append(None)
 
@@ -66,17 +96,19 @@ class CiwConverter:
             # We only care about transitions between internal nodes.
             # Transitions to "Exit" are implicit in Ciw (1.0 - sum(row)).
             if t.target != "Exit":
-                # Validate that nodes exist (Pydantic validates types, but not logic across lists)
+                # Validate that nodes exist (Pydantic validates types, but not
+                # logic across lists)
                 if t.source not in node_map or t.target not in node_map:
-                    raise ValueError(
-                        f"Transition references unknown node: {t.source} -> {t.target}"
+                    msg = (
+                        "Transition references unknown node: "
+                        f"{t.source} -> {t.target}"
                     )
+                    raise ValueError(msg)
 
                 u_idx = node_map[t.source]
                 v_idx = node_map[t.target]
                 routing[u_idx][v_idx] = t.probability
 
-        # 5. Return the Dictionary
         return {
             "number_of_servers": number_of_servers,
             "arrival_distributions": arrival_distributions,
@@ -87,21 +119,45 @@ class CiwConverter:
 
     @staticmethod
     def _normal_moments_from_lognormal(
-        m: float, v: float
+        mean: float, variance: float
     ) -> tuple[float, float]:
-        """Calculate mu and sigma of the normal distribution underlying
-        a lognormal with mean m and variance v.
+        """Convert lognormal moments to normal moments.
 
-        Note: TM added (from sim-tools) 0.6.0
+        TM added (from sim-tools) 0.6.0.
+
+        Parameters
+        ----------
+        mean : float
+            Mean of the lognormal distribution.
+        variance : float
+            Variance of the lognormal distribution.
+
+        Returns
+        -------
+        tuple of float
+            Mean and standard deviation of the underlying normal distribution.
+
         """
-        phi = math.sqrt(v + m**2)
-        mu = math.log(m**2 / phi)
-        sigma = math.sqrt(math.log(phi**2 / m**2))
+        phi = math.sqrt(variance + mean**2)
+        mu = math.log(mean**2 / phi)
+        sigma = math.sqrt(math.log(phi**2 / mean**2))
         return mu, sigma
 
-    def _extract_std(self, dist_obj, params):
-        """Help to extract standard deviation from parameters
-        Handles, 'sd', 'std', 'var', 'stdev'.
+    def _extract_std(self, dist_obj: Any, params: dict[str, Any]) -> float:
+        """Extract a standard deviation value from distribution parameters.
+
+        Parameters
+        ----------
+        dist_obj : Any
+            Distribution object being converted.
+        params : dict of str to Any
+            Distribution parameters.
+
+        Returns
+        -------
+        float
+            Standard deviation value.
+
         """
         sd_alias = ["sd", "std", "stdev"]
 
@@ -116,13 +172,25 @@ class CiwConverter:
 
         # throw exception if sd not supplied
         err_msg = (
-            f"{dist_obj.name} is type {dist_obj.type} and requires a"
-             "standard deviation param. None provided. Please review distributions."
+            f"{dist_obj.name} is type {dist_obj.type} and requires a standard "
+            "deviation param. None provided. Please review distributions."
         )
         raise AttributeError(err_msg)
 
-    def _make_ciw_dist(self, dist_obj):
-        """Helper to convert Pydantic Distribution model to Ciw Object"""
+    def _make_ciw_dist(self, dist_obj: Any) -> Any:
+        """Convert a distribution model to a Ciw distribution.
+
+        Parameters
+        ----------
+        dist_obj : Any
+            Distribution object to convert.
+
+        Returns
+        -------
+        Any
+            Ciw distribution object.
+
+        """
         p = dist_obj.parameters
 
         if dist_obj.type == "exponential":
@@ -130,32 +198,30 @@ class CiwConverter:
                 return ciw.dists.Exponential(p["rate"])
             if "mean" in p:
                 return ciw.dists.Exponential(1 / p["mean"])
-        elif dist_obj.type == "triangular":
+        if dist_obj.type == "triangular":
             return ciw.dists.Triangular(p["min"], p["mode"], p["max"])
-        elif dist_obj.type == "uniform":
+        if dist_obj.type == "uniform":
             return ciw.dists.Uniform(p["min"], p["max"])
-        elif dist_obj.type == "deterministic":
+        if dist_obj.type == "deterministic":
             return ciw.dists.Deterministic(p["value"])
         # ADDED 0.6.0: Lognormal mapping with math conversion
-        elif dist_obj.type == "lognormal":
+        if dist_obj.type == "lognormal":
             m = p["mean"]
             v = self._extract_std(dist_obj, p) ** 2
             mu, sigma = CiwConverter._normal_moments_from_lognormal(m, v)
             # 0.7.0 fixed param: "standard_deviation" should be "sd"
             return ciw.dists.Lognormal(mean=mu, sd=sigma)
         # ADDED 0.6.0: Gamma mapping
-        elif dist_obj.type == "gamma":
+        if dist_obj.type == "gamma":
             return ciw.dists.Gamma(shape=p["shape"], scale=p["scale"])
         # ADDED 0.7.0: Normal mapping
-        elif dist_obj.type == "normal":
+        if dist_obj.type == "normal":
             # normal expects mean and sd
             return ciw.dists.Normal(
                 mean=p["mean"], sd=self._extract_std(dist_obj, p)
             )
-        else:
-            raise ValueError(
-                f"Unsupported distribution type for json2ciw: {dist_obj.type}"
-            )
+        msg = f"Unsupported distribution type for json2ciw: {dist_obj.type}"
+        raise ValueError(msg)
 
 
 def multiple_replications(
@@ -166,58 +232,27 @@ def multiple_replications(
     warmup: float = 0.0,
     n_jobs: int = -1,
 ) -> pd.DataFrame:
-    """Run multiple replications of a Ciw simulation and collect performance metrics.
-
-    Executes independent replications of a discrete event simulation, collecting
-    node performance measures including arrivals, waiting times, service times,
-    utilisation, and queue lengths. Activity and resource names from the process
-    model are included in the output.
+    """Run multiple simulation replications and collect node metrics.
 
     Parameters
     ----------
     network : ciw.Network
-        A configured Ciw network object defining the queueing system structure,
-        service distributions, and routing.
+        Configured Ciw network.
     process_model : ProcessModel
-        Pydantic model containing activity and resource metadata. Used to map
-        node IDs to human-readable activity and resource names.
-    num_reps : int, default 50
-        Number of independent replications to run. Each replication uses a
-        the replication number as a random seed.
-    runtime : float, default 1000.0
-        Simulation time horizon for each replication. Units match the time
-        units used in service and arrival distributions.
-    warmup : float, default 0.0
-        Warmup period to exclude from statistics. Records with arrival times
-        before this value are filtered out to reduce initialization bias.
-    n_jobs: int, default -1
-        Number of cores to use for parallel replications. Use -1 for all cores.
+        Process model used to map node metadata.
+    num_reps : int, optional
+        Number of replications to run, by default 50.
+    runtime : float, optional
+        Simulation time horizon, by default 1000.0.
+    warmup : float, optional
+        Warmup period to exclude, by default 0.0.
+    n_jobs : int, optional
+        Number of parallel jobs, by default -1.
 
     Returns
     -------
-    pd.DataFrame
-        DataFrame with one row per node per replication containing:
-
-        - rep : int
-            Replication number (0-indexed)
-        - node_id : int
-            Ciw node identifier (1-indexed)
-        - activity_name : str
-            Name of the activity from process model
-        - resource_name : str
-            Name of the resource from process model
-        - resource_capacity : int
-            Number of servers at this node
-        - arrivals : int
-            Number of completed visits to this node
-        - mean_wait : float
-            Mean waiting time (queueing time before service)
-        - mean_service : float
-            Mean service time
-        - utilisation : float
-            Time-averaged server utilisation (fraction busy)
-        - mean_Lq : float
-            Time-averaged mean number of customers in queue
+    pandas.DataFrame
+        One row per node per replication.
 
     """
     # Build a mapping from node_id (1-indexed) to activity/resource info
@@ -255,92 +290,41 @@ def _single_run(
     rep: int = 0,
     warmup: float = 0.0,
     runtime: float = 1000.0,
-):
-    """Run a single Ciw replication and aggregate node-level performance metrics.
-
-    Executes one independent replication of the queueing network, collecting
-    time-averaged and per-customer measures for each transitive node. Results
-    include arrivals, waiting times, service times, utilisation, and mean
-    queue length, with node identifiers mapped to activity and resource
-    metadata.
+) -> list[dict[str, Any]]:
+    """Run a single simulation replication and aggregate node metrics.
 
     Parameters
     ----------
     network : ciw.Network
-        Configured Ciw network defining the queueing system structure,
-        arrival processes, service processes, routing, and optional reneging
-        behaviour.
-    node_metadata : dict[int, dict]
-        Mapping from Ciw node identifiers (1-indexed) to metadata
-        dictionaries containing activity and resource information. Expected
-        keys include ``"activity_name"``, ``"resource_name"``,
-        ``"resource_capacity"``, and optionally ``"has_reneging"``.
+        Configured Ciw network.
+    node_metadata : dict of int to dict of str to Any
+        Mapping from node identifiers to metadata.
     rep : int, optional
-        Replication index used both as an identifier in the output and as the
-        random seed for the simulation. Default is 0.
+        Replication index and random seed, by default 0.
     warmup : float, optional
-        Length of the warmup period to exclude from statistics. Records with
-        arrival times strictly less than this value are filtered out.
-        Default is 0.0.
+        Warmup period to exclude, by default 0.0.
     runtime : float, optional
-        Simulation time horizon for this replication. Units must match those
-        used in the arrival, service, and reneging time distributions.
-        Default is 1000.0.
+        Simulation time horizon, by default 1000.0.
 
     Returns
     -------
-    list[dict]
-        List of row dictionaries, one per transitive node.
-
-        Core fields returned for all nodes:
-        - ``rep`` : int
-            Replication index.
-        - ``node_id`` : int
-            Ciw node identifier (1-indexed).
-        - ``activity_name`` : str
-            Human-readable activity name for this node.
-        - ``resource_name`` : str
-            Name of the resource associated with this node.
-        - ``resource_capacity`` : int
-            Number of servers at this node.
-        - ``n_service`` : int
-            Number of completed service records at this node.
-        - ``mean_wait`` : float
-            Mean waiting time among customers who started service at this
-            node.
-        - ``mean_service`` : float
-            Mean service time among completed service records at this node.
-        - ``utilisation`` : float
-            Time-averaged server utilisation at this node, as a percentage.
-        - ``mean_Lq`` : float
-            Estimated mean number of customers in queue over the effective
-            horizon ``runtime - warmup``.
-
-        Additional fields for nodes with reneging enabled:
-        - ``n_renege`` : int
-            Number of completed reneging records at this node.
-        - ``mean_wait_renege`` : float
-            Mean waiting time among customers who reneged at this node.
-        - ``mean_wait_all`` : float
-            Mean waiting time across both served and reneging customers at
-            this node.
+    list of dict of str to Any
+        One result row per transitive node.
 
     Notes
     -----
-    The Ciw random number generators are seeded via ``ciw.seed(rep)`` to
+    The Ciw random number generators are seeded via `ciw.seed(rep)` to
     ensure reproducibility of each replication. Warmup filtering is applied
-    using the arrival times of customer records. This potentially needs modifying
-    at some point.
-
-    Since version 0.10.0 will return reneging stats if a node has a reneging distribution.
+    using the arrival times of customer records. This potentially needs
+    modifying at some point.
 
     """
     ciw.seed(rep)
-    Q = ciw.Simulation(network)
-    Q.simulate_until_max_time(runtime)
+    sim = ciw.Simulation(network)
+    sim.simulate_until_max_time(runtime)
 
     # modified v0.10.0 - separate service and reneged
-    recs = Q.get_all_records(only=["service", "renege"])
+    recs = sim.get_all_records(only=["service", "renege"])
 
     # Warmup filter
     if warmup > 0:
@@ -349,7 +333,7 @@ def _single_run(
     rows = []
     horizon = runtime - warmup
 
-    for node in Q.transitive_nodes:
+    for node in sim.transitive_nodes:
         node_id = node.id_number
         meta = node_metadata.get(node_id, {})
 
@@ -380,7 +364,7 @@ def _single_run(
         util = node.server_utilisation
 
         total_wait_all = sum(all_waits)
-        mean_Lq = total_wait_all / horizon if horizon > 0 else 0.0
+        mean_lq = total_wait_all / horizon if horizon > 0 else 0.0
 
         # default row - modified v0.10.0
         row = {
@@ -393,7 +377,7 @@ def _single_run(
             "mean_wait": mean_wait_service,
             "mean_service": mean_service,
             "utilisation": util * 100,
-            "mean_Lq": mean_Lq,
+            "mean_Lq": mean_lq,
         }
 
         # if add in renege wait if needed.
