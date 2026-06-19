@@ -1,0 +1,24 @@
+---
+title: Installation
+guide-section: "Getting Started"
+---
+
+At the moment, `json2ciw` can only be installed from GitHub.
+
+## Install with pip
+
+Install the latest version from the main branch:
+
+```bash
+pip install "git+https://github.com/sim-agent/json2ciw.git@main"
+```
+
+## Install in editable mode (for development)
+
+If you are developing `json2ciw` locally:
+
+```bash
+git clone https://github.com/sim-agent/json2ciw.git
+cd json2ciw
+pip install -e .
+```
