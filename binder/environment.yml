@@ -18,4 +18,4 @@ dependencies:
   - pip:
     - ciw==3.2.7
     - great-docs==0.14.0
-    - -e .
+    - -e ..
