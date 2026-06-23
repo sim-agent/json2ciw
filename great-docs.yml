@@ -134,3 +134,8 @@ jupyter: python3
 navbar_color:
   light: "#C76E00"
   dark: "#0A2540"
+
+
+# PyPI Link
+# ---------------
+pypi: false
