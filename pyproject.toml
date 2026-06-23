@@ -42,8 +42,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/pythonhealthdatascience/json2ciw"
-"Bug Tracker" = "https://github.com/pythonhealthdatascience/json2ciw/issues"
+Homepage = "https://github.com/sim-agent/json2ciw"
+"Bug Tracker" = "https://github.com/sim-agent/json2ciw/issues"
 
 [tool.hatch.version]
 path = "json2ciw/__init__.py"
