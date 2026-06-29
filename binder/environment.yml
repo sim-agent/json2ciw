@@ -17,5 +17,5 @@ dependencies:
   - streamlit=1.55.0
   - pip:
     - ciw==3.2.7
-    - great-docs==0.14.0
+    - great-docs==0.14.1
     - -e ..
