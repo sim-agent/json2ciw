@@ -12,6 +12,7 @@ THREE_NODE = "three_node_network.json"
 SIX_NODE_UCC = "six_node_ucc.json"
 RENEGE = "call_renege.json"
 MM1_RENEGE = "mm1_renege.json"
+THREE_CLASSES = "three_customer_class.json"
 
 
 def load_model_file(file_path: str | PathLike[str]) -> dict[str, Any]:
@@ -102,3 +103,14 @@ def load_mm1_renege_model() -> dict[str, Any]:
 
     """
     return load_model_file(MODELS_DIR / MM1_RENEGE)
+
+def load_three_classes_model() -> dict[str, Any]:
+    """Load the M/M/1 reneging model specification.
+
+    Returns
+    -------
+    dict of str to Any
+        Parsed JSON model specification.
+
+    """
+    return load_model_file(MODELS_DIR / THREE_CLASSES)
