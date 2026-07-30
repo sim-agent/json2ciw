@@ -37,7 +37,7 @@ class CiwConverter:
         """
         self.model = model
 
-    def generate_params(self) -> dict:
+    def generate_params(self) -> dict[str, Any]:
         """Generate Ciw network parameters from the process model.
 
         Returns
@@ -46,9 +46,27 @@ class CiwConverter:
             Parameters compatible with `ciw.create_network`.
 
         """
+        # Branch conversion depending on whether the model defines
+        # customer classes. Single-class models keep the original list-based
+        # Ciw inputs, while multi-class models use class-keyed dictionaries
+        # for arrivals, services, routing, and reneging when needed.
+        if getattr(self.model, "customer_classes", []):
+            return self._generate_multiclass_params()
+        return self._generate_singleclass_params()
+
+    def _generate_singleclass_params(self) -> dict[str, Any]:
+        """Generate single-class Ciw network parameters.
+
+        Returns
+        -------
+        dict of str to Any
+            Parameters compatible with `ciw.create_network`.
+
+        """
         # 1. Map Activity Names to Integer Indices
-        # Ciw networks are index-based (0, 1, 2...), but our JSON is name-based
-        # We assume the order in the list is the order of the nodes.
+        # Ciw networks are index-based (0, 1, 2...), but our JSON is
+        # name-based. We assume the order in the list is the order of
+        # the nodes.
         node_map = {act.name: i for i, act in enumerate(self.model.activities)}
         n_nodes = len(self.model.activities)
 
@@ -58,7 +76,14 @@ class CiwConverter:
         arrival_distributions = []
         reneging_time_distributions = []
 
-        # 3. Iterate through Activities to build Node properties
+        # 3. Track Whether Reneging Is Used Anywhere
+        # If reneging is unused throughout the model, omit the Ciw
+        # parameter entirely rather than sending a list of all None.
+        has_reneging = any(
+            act.renege_distribution is not None for act in self.model.activities
+        )
+
+        # 4. Iterate through Activities to build Node properties
         for act in self.model.activities:
             # -- Resources (Servers) --
             number_of_servers.append(act.resource.capacity)
@@ -69,34 +94,37 @@ class CiwConverter:
             )
 
             # -- Arrival Distribution (Optional) --
-            if act.arrival_distribution:
+            if act.arrival_distribution is not None:
                 arrival_distributions.append(
                     self._make_ciw_dist(act.arrival_distribution)
                 )
             else:
-                # If no arrival distribution is specified in JSON, it means no
-                # external arrivals
-                # None = old NoArrivals pre ciw v3
+                # If no arrival distribution is specified in JSON, it means
+                # no external arrivals.
+                # None = old NoArrivals pre ciw v3.
                 arrival_distributions.append(None)
 
             # -- Renege Distribution (Optional) --
-            if act.renege_distribution:
-                reneging_time_distributions.append(
-                    self._make_ciw_dist(act.renege_distribution)
-                )
-            else:
-                reneging_time_distributions.append(None)
+            # Only build the list if reneging is used anywhere in the model.
+            if has_reneging:
+                if act.renege_distribution is not None:
+                    reneging_time_distributions.append(
+                        self._make_ciw_dist(act.renege_distribution)
+                    )
+                else:
+                    reneging_time_distributions.append(None)
 
-        # 4. Build Routing Matrix (Process Flow -> Probability Matrix)
-        # Initialize an N x N matrix with 0.0
+        # 5. Build Routing Matrix (Process Flow -> Probability Matrix)
+        # Initialize an N x N matrix with 0.0.
         routing = [[0.0] * n_nodes for _ in range(n_nodes)]
 
         for t in self.model.transitions:
             # We only care about transitions between internal nodes.
-            # Transitions to "Exit" are implicit in Ciw (1.0 - sum(row)).
+            # Transitions to "Exit" are implicit in Ciw
+            # (1.0 - sum(row)).
             if t.target != "Exit":
-                # Validate that nodes exist (Pydantic validates types, but not
-                # logic across lists)
+                # Validate that nodes exist (Pydantic validates types,
+                # but not logic across lists).
                 if t.source not in node_map or t.target not in node_map:
                     msg = (
                         "Transition references unknown node: "
@@ -108,13 +136,203 @@ class CiwConverter:
                 v_idx = node_map[t.target]
                 routing[u_idx][v_idx] = t.probability
 
-        return {
+        params = {
             "number_of_servers": number_of_servers,
             "arrival_distributions": arrival_distributions,
             "service_distributions": service_distributions,
-            "reneging_time_distributions": reneging_time_distributions,
             "routing": routing,
         }
+
+        # 6. Add Reneging Only If It Is Used
+        # This keeps the generated parameter dictionary cleaner and avoids
+        # specifying an unnecessary optional Ciw keyword.
+        if has_reneging:
+            params["reneging_time_distributions"] = (
+                reneging_time_distributions
+            )
+
+        return params
+
+    def _generate_multiclass_params(self) -> dict[str, Any]:
+        """Generate multi-class Ciw network parameters.
+
+        Returns
+        -------
+        dict of str to Any
+            Parameters compatible with `ciw.create_network`.
+
+        """
+        # 1. Map Activity Names to Integer Indices
+        # Ciw still indexes nodes internally, even when customer classes
+        # are used.
+        node_map = {act.name: i for i, act in enumerate(self.model.activities)}
+        n_nodes = len(self.model.activities)
+
+        # 2. Extract Customer Class Names
+        # Use the model class names as the keys expected by
+        # ciw.create_network.
+        class_names = [c.name for c in self.model.customer_classes]
+
+        # 3. Track Whether Reneging Is Used Anywhere
+        # If reneging is unused throughout the model, omit the Ciw
+        # parameter entirely rather than sending class-keyed lists of
+        # all None.
+        has_reneging = any(
+            act.renege_distribution is not None for act in self.model.activities
+        )
+
+        # 4. Build Shared Node-Level Inputs
+        # Resources remain shared across all customer classes for now.
+        number_of_servers = [
+            act.resource.capacity for act in self.model.activities
+        ]
+
+        # 5. Build a Shared Routing Matrix
+        # Routing is currently class-agnostic in the schema, so each
+        # customer class gets the same routing matrix.
+        shared_routing = [[0.0] * n_nodes for _ in range(n_nodes)]
+
+        for t in self.model.transitions:
+            # We only care about transitions between internal nodes.
+            # Transitions to "Exit" are implicit in Ciw
+            # (1.0 - sum(row)).
+            if t.target != "Exit":
+                # Validate that nodes exist (Pydantic validates types,
+                # but not logic across lists).
+                if t.source not in node_map or t.target not in node_map:
+                    msg = (
+                        "Transition references unknown node: "
+                        f"{t.source} -> {t.target}"
+                    )
+                    raise ValueError(msg)
+
+                u_idx = node_map[t.source]
+                v_idx = node_map[t.target]
+                shared_routing[u_idx][v_idx] = t.probability
+
+        # 6. Initialize Class-Keyed Ciw Arguments
+        arrival_distributions = {}
+        service_distributions = {}
+        routing = {}
+
+        # Renege distributions need to be class-keyed too when using a
+        # multi-class model, otherwise Ciw raises a class consistency
+        # error. For now the same reneging structure is given to each
+        # class because reneging itself is still activity-level in the
+        # schema.
+        reneging_time_distributions = {} if has_reneging else None
+
+        # 7. Build Class-Specific Arrival, Service, and Reneging Lists
+        for class_name in class_names:
+            arrival_distributions[class_name] = []
+            service_distributions[class_name] = []
+
+            # Give every class the same routing matrix for now.
+            routing[class_name] = [row[:] for row in shared_routing]
+
+            if has_reneging:
+                reneging_time_distributions[class_name] = []
+
+            for act in self.model.activities:
+                # -- Arrival Distribution (Optional) --
+                # Shared distributions apply to all classes. Class-specific
+                # distributions are looked up by customer class name.
+                arr_dist = self._resolve_distribution_spec(
+                    act.arrival_distribution,
+                    customer_class=class_name,
+                )
+                if arr_dist is not None:
+                    arrival_distributions[class_name].append(
+                        self._make_ciw_dist(arr_dist)
+                    )
+                else:
+                    # If no arrival distribution is specified for this class
+                    # at this node, it means no external arrivals.
+                    arrival_distributions[class_name].append(None)
+
+                # -- Service Distribution (Mandatory in Ciw) --
+                # For multi-class networks, Ciw expects a service entry for
+                # every class at every node. If a class-specific service
+                # distribution is missing, use Deterministic(0.0) as the
+                # neutral placeholder recommended in the Ciw docs.
+                srv_dist = self._resolve_distribution_spec(
+                    act.service_distribution,
+                    customer_class=class_name,
+                )
+                if srv_dist is not None:
+                    service_distributions[class_name].append(
+                        self._make_ciw_dist(srv_dist)
+                    )
+                else:
+                    service_distributions[class_name].append(
+                        ciw.dists.Deterministic(value=0.0)
+                    )
+
+                # -- Renege Distribution (Optional but Class-Keyed) --
+                # Reneging is currently shared at activity level in the
+                # schema, but in a multi-class Ciw model the parameter must
+                # still be provided per class if used anywhere.
+                if has_reneging:
+                    if act.renege_distribution is not None:
+                        reneging_time_distributions[class_name].append(
+                            self._make_ciw_dist(act.renege_distribution)
+                        )
+                    else:
+                        reneging_time_distributions[class_name].append(None)
+
+        params = {
+            "number_of_servers": number_of_servers,
+            "arrival_distributions": arrival_distributions,
+            "service_distributions": service_distributions,
+            "routing": routing,
+        }
+
+        # 8. Add Reneging Only If It Is Used
+        # This keeps the generated parameter dictionary cleaner and avoids
+        # specifying an unnecessary optional Ciw keyword.
+        if has_reneging:
+            params["reneging_time_distributions"] = (
+                reneging_time_distributions
+            )
+
+        return params
+
+    def _resolve_distribution_spec(
+        self,
+        spec: Any,
+        customer_class: str,
+    ) -> Any:
+        """Resolve a distribution specification for one customer class.
+
+        Parameters
+        ----------
+        spec : Any
+            Distribution specification to resolve. This may be a shared
+            `Distribution`, a class-specific mapping wrapper, or `None`.
+        customer_class : str
+            Customer class name.
+
+        Returns
+        -------
+        Any
+            Resolved distribution object for the customer class, or `None`
+            if no class-specific distribution is defined.
+
+        """
+        # No specification means nothing to resolve.
+        if spec is None:
+            return None
+
+        # Shared single distribution: applies to all customer classes.
+        if hasattr(spec, "type") and hasattr(spec, "parameters"):
+            return spec
+
+        # Class-specific distribution mapping: look up by class name.
+        if hasattr(spec, "by_class"):
+            return spec.by_class.get(customer_class)
+
+        # Fallback for unexpected types.
+        return None
 
     @staticmethod
     def normal_moments_from_lognormal(
@@ -132,7 +350,8 @@ class CiwConverter:
         Returns
         -------
         tuple of float
-            Mean and standard deviation of the underlying normal distribution.
+            Mean and standard deviation of the underlying normal
+            distribution.
 
         """
         phi = math.sqrt(variance + mean**2)
@@ -213,9 +432,9 @@ class CiwConverter:
             return ciw.dists.Normal(
                 mean=p["mean"], sd=self._extract_std(dist_obj, p)
             )
+
         msg = f"Unsupported distribution type for json2ciw: {dist_obj.type}"
         raise ValueError(msg)
-
 
 def multiple_replications(
     network: ciw.Network,
