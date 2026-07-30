@@ -523,7 +523,9 @@ class ProcessModel(BaseModel):
         return "\n".join(lines)
 
 
-    def display_diagram(self, *, include_resources: bool = True) -> None:
+    def display_diagram(
+            self, *, include_resources: bool = True, show_class_arrivals: bool = True
+    ) -> None:
         """Display the Mermaid diagram in a notebook.
 
         Parameters
@@ -535,12 +537,12 @@ class ProcessModel(BaseModel):
 
         prefix = "```mermaid \n"
         postfix = " \n```"
-        mermaid_code = self.to_mermaid(include_resources=include_resources)
+        mermaid_code = self.to_mermaid(include_resources=include_resources, show_class_arrivals=show_class_arrivals)
 
         display(Markdown(prefix + mermaid_code + postfix))
 
     def save_diagram(
-        self, filename: str, *, include_resources: bool = True
+        self, filename: str, *, include_resources: bool = True, show_class_arrivals: bool = True
     ) -> None:
         """Save the Mermaid diagram to a file.
 
@@ -552,7 +554,7 @@ class ProcessModel(BaseModel):
             Whether to include resource nodes, by default `True`.
 
         """
-        mermaid_code = self.to_mermaid(include_resources=include_resources)
+        mermaid_code = self.to_mermaid(include_resources=include_resources, show_class_arrivals=show_class_arrivals)
         with Path.open(filename, "w") as f:
             f.write(mermaid_code)
 
