@@ -402,7 +402,6 @@ class ProcessModel(BaseModel):
         >>> model.to_mermaid(include_resources=False)
         """
     
-        #lines = ["```mermaid", "graph TD"]
         lines = ["graph TD"]
 
         def make_node_id(name: str) -> str:
@@ -440,7 +439,7 @@ class ProcessModel(BaseModel):
                     arrival_id = f"Arrivals_{node_id}_{class_id}"
                     arr_label = (
                         f"{class_label}"
-                        + "\\n"
+                        + "</br>"
                         + self._format_dist(dist, context="arrival")
                     )
                     lines.append(f'    {arrival_id}("{arr_label}")')
@@ -451,7 +450,7 @@ class ProcessModel(BaseModel):
             dist_info = self._summarise_distribution_spec(
                 activity.service_distribution, context="service"
             )
-            label = f"{activity.name}\\n{dist_info}"
+            label = f"{activity.name}</br>{dist_info}"
             lines.append(f'    {node_id}["{label}"]')
 
         # --- Renege nodes ---
@@ -460,7 +459,7 @@ class ProcessModel(BaseModel):
                 node_id = make_node_id(activity.name)
                 renege_id = f"Renege_{node_id}"
                 renege_info = self._format_dist(activity.renege_distribution)
-                lines.append(f'    {renege_id}{{{{"Renege\\n{renege_info}"}}}}')
+                lines.append(f'    {renege_id}{{{{"Renege</br>{renege_info}"}}}}')
 
         # --- Resource nodes ---
         if include_resources:
