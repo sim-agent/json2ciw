@@ -7,7 +7,7 @@ Mermaid-based views of the model structure.
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal, Self
+from typing import Literal, Self, TypeAlias
 
 import pandas as pd
 from IPython.display import Markdown, display
@@ -38,6 +38,41 @@ class Distribution(BaseModel):
     parameters: dict[str, float]
 
 
+class ClassDistributionMap(BaseModel):
+    """Define class-specific distribution specifications.
+
+    Attributes
+    ----------
+    by_class : dict of str to Distribution
+        Mapping from customer class name to the distribution used for
+        that class.
+
+    """
+    by_class: dict[str, Distribution]
+
+
+DistributionSpec: TypeAlias = Distribution | ClassDistributionMap
+
+
+class CustomerClass(BaseModel):
+    """Define a customer class in the ProcessModel.
+
+    E.g. 
+    planned versus unplanned patients for surgery
+    mild/moderate stroke versus severe stroke
+
+    Attributes
+    ----------
+    name : str
+        Unique machine-readable identifier for the customer class.
+    label : str or None
+        Human-readable label for the customer class.
+
+    """
+    name: str
+    label: str | None = None
+
+
 class Resource(BaseModel):
     """Define a resource used by an activity.
 
@@ -65,20 +100,21 @@ class Activity(BaseModel):
         Activity type.
     resource : Resource
         Resource used by the activity.
-    service_distribution : Distribution
-        Service-time distribution.
-    arrival_distribution : Distribution or None
-        Arrival distribution for entry activities.
+    service_distribution : Distribution or ClassDistributionMap
+        Service-time distribution, either shared across all customer
+        classes or specified separately by customer class.
+    arrival_distribution : Distribution or ClassDistributionMap or None
+        Arrival distribution for entry activities, either shared across
+        all customer classes or specified separately by customer class.
     renege_distribution : Distribution or None
         Reneging distribution for the activity.
 
     """
-
     name: str
     type: str
     resource: Resource
-    service_distribution: Distribution
-    arrival_distribution: Distribution | None = None
+    service_distribution: DistributionSpec
+    arrival_distribution: DistributionSpec | None = None
     renege_distribution: Distribution | None = None
 
 
@@ -110,6 +146,8 @@ class ProcessModel(BaseModel):
         Model name.
     description : str or None
         Model description.
+    customer_classes : list of CustomerClass
+        Customer classes available in the model.
     activities : list of Activity
         Activities in the model.
     transitions : list of Transition
@@ -119,19 +157,47 @@ class ProcessModel(BaseModel):
 
     name: str
     description: str | None = None
+    customer_classes: list[CustomerClass] = Field(default_factory=list)
     activities: list[Activity]
     transitions: list[Transition]
 
     @model_validator(mode="after")
+    def validate_customer_classes(self) -> Self:
+        class_names = [c.name for c in self.customer_classes]
+        if len(class_names) != len(set(class_names)):
+            raise ValueError("Customer class names must be unique.")
+
+        allowed_classes = set(class_names)
+
+        def check_distribution_keys(
+            spec: DistributionSpec | None, field_name: str, activity_name: str
+        ) -> None:
+            if spec is None:
+                return
+            if isinstance(spec, ClassDistributionMap):
+                unknown = set(spec.by_class) - allowed_classes
+                if unknown:
+                    raise ValueError(
+                        f"{field_name} in activity '{activity_name}' uses unknown "
+                        f"customer classes: {', '.join(sorted(unknown))}"
+                    )
+
+        for activity in self.activities:
+            check_distribution_keys(
+                activity.service_distribution,
+                "service_distribution",
+                activity.name,
+            )
+            check_distribution_keys(
+                activity.arrival_distribution,
+                "arrival_distribution",
+                activity.name,
+            )
+
+        return self
+
+    @model_validator(mode="after")
     def validate_transition_rows(self) -> Self:
-        """Validate outgoing transition probabilities.
-
-        Returns
-        -------
-        Self
-            Validated process model.
-
-        """
         activity_names: set[str] = {a.name for a in self.activities}
         allowed_targets = activity_names | {"Exit"}
 
@@ -139,11 +205,9 @@ class ProcessModel(BaseModel):
 
         for t in self.transitions:
             if t.source not in activity_names:
-                msg = f"Transition 'from' unknown activity: {t.source}"
-                raise ValueError(msg)
+                raise ValueError(f"Transition 'from' unknown activity: {t.source}")
             if t.target not in allowed_targets:
-                msg = f"Transition 'to' unknown target: {t.target}"
-                raise ValueError(msg)
+                raise ValueError(f"Transition 'to' unknown target: {t.target}")
             probs_by_source[t.source] += t.probability
 
         tol = 1e-9
@@ -167,11 +231,10 @@ class ProcessModel(BaseModel):
             details = ", ".join(
                 [f"{name} (sum={total})" for name, total in bad_sums]
             )
-            msg = (
+            raise ValueError(
                 "Outgoing transition probabilities must sum to 1.0 for each "
                 f"activity; problems: {details}"
             )
-            raise ValueError(msg)
 
         return self
 
@@ -235,67 +298,151 @@ class ProcessModel(BaseModel):
             return f"Time between arrivals<br/>{label}"
         return label
 
-    def to_mermaid(self, *, include_resources: bool = True) -> str:
+    def _iter_distribution_spec(
+        self, spec: DistributionSpec
+    ) -> list[tuple[str | None, str | None, Distribution]]:
+        """Iterate over a distribution specification.
+
+        Parameters
+        ----------
+        spec : DistributionSpec
+            Distribution specification to expand. This may be a single
+            shared distribution or a class-specific mapping.
+
+        Returns
+        -------
+        list of tuple of str or None, str or None, Distribution
+            Expanded distribution entries as tuples of
+            `(customer_class_name, customer_class_label, distribution)`.
+            For shared distributions, the class name and label are `None`.
+        """
+        class_labels = {
+            c.name: (c.label or c.name) for c in getattr(self, "customer_classes", [])
+        }
+
+        if isinstance(spec, Distribution):
+            return [(None, None, spec)]
+
+        return [
+            (class_name, class_labels.get(class_name, class_name), dist)
+            for class_name, dist in spec.by_class.items()
+        ]
+
+
+    def _summarise_distribution_spec(
+        self, spec: DistributionSpec, context: str = "service"
+    ) -> str:
+        """Summarise a distribution specification for compact display.
+
+        Parameters
+        ----------
+        spec : DistributionSpec
+            Distribution specification to summarise.
+        context : str, optional
+            Rendering context. Use `"arrival"` for arrival summaries and
+            `"service"` for service summaries, by default `"service"`.
+
+        Returns
+        -------
+        str
+            Summary label suitable for compact Mermaid node text.
+        """
+        if isinstance(spec, Distribution):
+            return self._format_dist(spec, context=context)
+
+        if context == "arrival":
+            return "Class-specific arrival distributions"
+        return "Class-specific service distributions"
+
+
+    def to_mermaid(
+        self,
+        *,
+        include_resources: bool = True,
+        show_class_arrivals: bool = True,
+    ) -> str:
         """Convert the process model to a Mermaid flowchart.
 
         Parameters
         ----------
         include_resources : bool, optional
             Whether to include resource nodes, by default `True`.
+        show_class_arrivals : bool, optional
+            Whether to render separate arrival nodes for each customer class
+            when class-specific arrival distributions are defined, by default
+            `True`.
 
         Returns
         -------
         str
             Mermaid flowchart source.
-
         """
         lines = ["flowchart TD"]
 
         def make_node_id(name: str) -> str:
+            """Create a Mermaid-safe node identifier.
+
+            Parameters
+            ----------
+            name : str
+                Raw node name.
+
+            Returns
+            -------
+            str
+                Sanitised node identifier with spaces and hyphens replaced
+                by underscores.
+            """
             return name.replace(" ", "_").replace("-", "_")
 
-        entry_activities = [
-            a for a in self.activities if a.arrival_distribution
-        ]
+        entry_activities = [a for a in self.activities if a.arrival_distribution]
 
         # --- Arrival nodes ---
         for activity in entry_activities:
             node_id = make_node_id(activity.name)
-            arrival_id = f"Arrivals_{node_id}"
-            arr_label = self._format_dist(
-                activity.arrival_distribution, context="arrival"
-            )
-            lines.append(f'    {arrival_id}("{arr_label}")')
+            arr_spec = activity.arrival_distribution
+
+            if isinstance(arr_spec, Distribution) or not show_class_arrivals:
+                arrival_id = f"Arrivals_{node_id}"
+                arr_label = self._summarise_distribution_spec(
+                    arr_spec, context="arrival"
+                )
+                lines.append(f'    {arrival_id}("{arr_label}")')
+            else:
+                for class_name, class_label, dist in self._iter_distribution_spec(arr_spec):
+                    class_id = make_node_id(class_name)
+                    arrival_id = f"Arrivals_{node_id}_{class_id}"
+                    arr_label = (
+                        f"{class_label}"
+                        + "\\n"
+                        + self._format_dist(dist, context="arrival")
+                    )
+                    lines.append(f'    {arrival_id}("{arr_label}")')
 
         # --- Activity nodes ---
         for activity in self.activities:
             node_id = make_node_id(activity.name)
-            dist_info = self._format_dist(activity.service_distribution)
-            label = f"{activity.name}<br/>{dist_info}"
+            dist_info = self._summarise_distribution_spec(
+                activity.service_distribution, context="service"
+            )
+            label = f"{activity.name}\\n{dist_info}"
             lines.append(f'    {node_id}["{label}"]')
 
-        # --- Renege nodes (parallel renege flow) ---
+        # --- Renege nodes ---
         for activity in self.activities:
             if activity.renege_distribution:
                 node_id = make_node_id(activity.name)
                 renege_id = f"Renege_{node_id}"
                 renege_info = self._format_dist(activity.renege_distribution)
-                lines.append(
-                    "    " + renege_id + '{{"Renege<br/>' + renege_info + '"}}'
-                )
+                lines.append(f'    {renege_id}{{{{"Renege\\n{renege_info}"}}}}')
 
         # --- Resource nodes ---
         if include_resources:
             seen_resources = set()
             for activity in self.activities:
                 if activity.resource.name not in seen_resources:
-                    resource_id = make_node_id(
-                        f"Resource_{activity.resource.name}"
-                    )
-                    res_label = (
-                        f"{activity.resource.name}<br/>("
-                        f"{activity.resource.capacity})"
-                    )
+                    resource_id = make_node_id(f"Resource_{activity.resource.name}")
+                    res_label = f"{activity.resource.name} ({activity.resource.capacity})"
                     lines.append(f'    {resource_id}(("{res_label}"))')
                     seen_resources.add(activity.resource.name)
 
@@ -305,20 +452,26 @@ class ProcessModel(BaseModel):
         # --- Edges: arrivals ---
         for activity in entry_activities:
             node_id = make_node_id(activity.name)
-            arrival_id = f"Arrivals_{node_id}"
-            lines.append(f"    {arrival_id} --> {node_id}")
+            arr_spec = activity.arrival_distribution
+
+            if isinstance(arr_spec, Distribution) or not show_class_arrivals:
+                arrival_id = f"Arrivals_{node_id}"
+                lines.append(f"    {arrival_id} --> {node_id}")
+            else:
+                for class_name, _, _ in self._iter_distribution_spec(arr_spec):
+                    class_id = make_node_id(class_name)
+                    arrival_id = f"Arrivals_{node_id}_{class_id}"
+                    lines.append(f"    {arrival_id} --> {node_id}")
 
         # --- Edges: resource seize/release ---
         if include_resources:
             for activity in self.activities:
                 node_id = make_node_id(activity.name)
-                resource_id = make_node_id(
-                    f"Resource_{activity.resource.name}"
-                )
+                resource_id = make_node_id(f"Resource_{activity.resource.name}")
                 lines.append(f"    {resource_id} -.Seize.-> {node_id}")
                 lines.append(f"    {node_id} -.Release.-> {resource_id}")
 
-        # --- Edges: renege (dashed optional path) ---
+        # --- Edges: renege ---
         for activity in self.activities:
             if activity.renege_distribution:
                 node_id = make_node_id(activity.name)
@@ -333,7 +486,6 @@ class ProcessModel(BaseModel):
                 if transition.target != "Exit"
                 else "Exit"
             )
-
             if transition.probability == 1.0:
                 lines.append(f"    {source_id} --> {target_id}")
             else:
@@ -341,6 +493,7 @@ class ProcessModel(BaseModel):
                 lines.append(f"    {source_id} -->|{prob_label}| {target_id}")
 
         return "\n".join(lines)
+
 
     def display_diagram(self, *, include_resources: bool = True) -> None:
         """Display the Mermaid diagram in a notebook.
@@ -377,45 +530,56 @@ class ProcessModel(BaseModel):
         Returns
         -------
         pandas.DataFrame
-            Distribution details for each activity phase.
-
+            Distribution details for each activity phase, expanded by
+            customer class where class-specific distributions are defined.
         """
         records = []
+
         for activity in self.activities:
             if activity.arrival_distribution:
-                arr = activity.arrival_distribution
+                for class_name, class_label, dist in self._iter_distribution_spec(
+                    activity.arrival_distribution
+                ):
+                    records.append(
+                        {
+                            "Activity": activity.name,
+                            "Phase": "Arrival",
+                            "Customer Class": class_name or "All",
+                            "Customer Class Label": class_label or "All",
+                            "Distribution Type": dist.type.capitalize(),
+                            "Parameters": ", ".join(
+                                f"{k}={v}" for k, v in dist.parameters.items()
+                            ),
+                        }
+                    )
+
+            for class_name, class_label, dist in self._iter_distribution_spec(
+                activity.service_distribution
+            ):
                 records.append(
                     {
                         "Activity": activity.name,
-                        "Phase": "Arrival",
-                        "Distribution Type": arr.type.capitalize(),
+                        "Phase": "Service",
+                        "Customer Class": class_name or "All",
+                        "Customer Class Label": class_label or "All",
+                        "Distribution Type": dist.type.capitalize(),
                         "Parameters": ", ".join(
-                            f"{k}={v}" for k, v in arr.parameters.items()
+                            f"{k}={v}" for k, v in dist.parameters.items()
                         ),
                     }
                 )
 
-            srv = activity.service_distribution
-            records.append(
-                {
-                    "Activity": activity.name,
-                    "Phase": "Service",
-                    "Distribution Type": srv.type.capitalize(),
-                    "Parameters": ", ".join(
-                        f"{k}={v}" for k, v in srv.parameters.items()
-                    ),
-                }
-            )
-
             if activity.renege_distribution:
-                ren = activity.renege_distribution
+                dist = activity.renege_distribution
                 records.append(
                     {
                         "Activity": activity.name,
                         "Phase": "Renege",
-                        "Distribution Type": ren.type.capitalize(),
+                        "Customer Class": "All",
+                        "Customer Class Label": "All",
+                        "Distribution Type": dist.type.capitalize(),
                         "Parameters": ", ".join(
-                            f"{k}={v}" for k, v in ren.parameters.items()
+                            f"{k}={v}" for k, v in dist.parameters.items()
                         ),
                     }
                 )
