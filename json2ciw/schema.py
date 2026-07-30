@@ -376,7 +376,32 @@ class ProcessModel(BaseModel):
         -------
         str
             Mermaid flowchart source.
+
+        Notes
+        -----
+        Node types used in the diagram:
+
+        - **Rounded rectangle** ``( )``: Arrival source nodes, labelled with
+        the inter-arrival distribution.
+        - **Rectangle** ``[ ]``: Activity nodes, labelled with the activity
+        name and service distribution.
+        - **Hexagon** ``{{ }}``: Renege nodes, connected to their parent
+        activity via a dashed edge. Rendered only when an activity has a
+        ``renege_distribution`` defined.
+        - **Stadium** ``([ ])``: The terminal ``Exit`` node.
+        - **Double circle** ``(( ))``: Resource nodes, rendered when
+        ``include_resources=True``.
+
+        Transition edges with probability < 1.0 are labelled with the
+        percentage. Renege edges are always dashed (``-.->``). Resource
+        seize/release edges are dashed with text labels.
+
+        Examples
+        --------
+        >>> print(model.to_mermaid())
+        >>> model.to_mermaid(include_resources=False)
         """
+    
         lines = ["flowchart TD"]
 
         def make_node_id(name: str) -> str:
