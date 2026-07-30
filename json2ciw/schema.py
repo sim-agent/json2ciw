@@ -350,9 +350,11 @@ class ProcessModel(BaseModel):
         if isinstance(spec, Distribution):
             return self._format_dist(spec, context=context)
 
+        n_classes = len(spec.by_class)
+
         if context == "arrival":
-            return "Class-specific arrival distributions"
-        return "Class-specific service distributions"
+            return f"Class-specific arrival distributions (n={n_classes})"
+        return f"Class-specific service distributions (n={n_classes})"
 
 
     def to_mermaid(
