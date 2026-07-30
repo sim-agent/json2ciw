@@ -436,6 +436,7 @@ class CiwConverter:
         msg = f"Unsupported distribution type for json2ciw: {dist_obj.type}"
         raise ValueError(msg)
 
+
 def multiple_replications(
     network: ciw.Network,
     process_model: "ProcessModel",
@@ -464,7 +465,9 @@ def multiple_replications(
     Returns
     -------
     pandas.DataFrame
-        One row per node per replication.
+        Tidy-format replication results with one overall row per node
+        per replication, plus one row per customer class per node per
+        replication when customer classes are defined.
 
     """
     # Build a mapping from node_id (1-indexed) to activity/resource info
@@ -478,26 +481,136 @@ def multiple_replications(
             "has_reneging": activity.renege_distribution is not None,
         }
 
+    # Extract customer class names from the model.
+    # If no classes are defined, the single-class behaviour is retained
+    # and only overall rows are returned.
+    customer_classes = [
+        c.name for c in getattr(process_model, "customer_classes", [])
+    ]
+
     # Run independent replications in parallel, one per seed
     results = Parallel(n_jobs=n_jobs)(
         delayed(_single_run)(
             network=network,
             node_metadata=node_metadata,
+            customer_classes=customer_classes,
             rep=rep,
             warmup=warmup,
             runtime=runtime,
         )
         for rep in range(num_reps)
     )
+
     # Flatten list-of-lists of row dicts
     records = [row for rep_rows in results for row in rep_rows]
 
     return pd.DataFrame.from_records(records)
 
 
+def _build_result_row(
+    recs_subset: list[Any],
+    rep: int,
+    node_id: int,
+    meta: dict[str, Any],
+    horizon: float,
+    measure_scope: str,
+    customer_class: str | None = None,
+) -> dict[str, Any]:
+    """Summarise a subset of records for one node and one scope.
+
+    Parameters
+    ----------
+    recs_subset : list of Any
+        Record subset to summarise.
+    rep : int
+        Replication index.
+    node_id : int
+        Node identifier.
+    meta : dict of str to Any
+        Node metadata dictionary.
+    horizon : float
+        Effective analysis horizon after warmup removal.
+    measure_scope : str
+        Scope of the summary, typically `"overall"` or `"customer_class"`.
+    customer_class : str or None, optional
+        Customer class name for class-specific summaries, by default `None`.
+
+    Returns
+    -------
+    dict of str to Any
+        One tidy-format summary row.
+
+    """
+    # Split records by outcome type.
+    service_recs = [r for r in recs_subset if r.record_type == "service"]
+    renege_recs = [r for r in recs_subset if r.record_type == "renege"]
+
+    # Extract primitive metrics from records.
+    service_waits = [r.waiting_time for r in service_recs]
+    renege_waits = [r.waiting_time for r in renege_recs]
+    all_waits = [r.waiting_time for r in recs_subset]
+    service_times = [r.service_time for r in service_recs]
+
+    n_service = len(service_recs)
+    n_renege = len(renege_recs)
+    n_total = n_service + n_renege
+
+    mean_wait_service = (
+        statistics.mean(service_waits) if service_waits else 0.0
+    )
+    mean_wait_renege = (
+        statistics.mean(renege_waits) if renege_waits else 0.0
+    )
+    mean_wait_all = statistics.mean(all_waits) if all_waits else 0.0
+    mean_service = statistics.mean(service_times) if service_times else 0.0
+
+    # Queue-length contribution can be computed from the same waiting-time
+    # identity as the overall metric, just using the filtered record subset.
+    total_wait_all = sum(all_waits)
+    mean_lq = total_wait_all / horizon if horizon > 0 else 0.0
+
+    # Renege rate is useful for downstream summaries if reneging is present.
+    renege_rate = n_renege / n_total if n_total > 0 else 0.0
+
+    row = {
+        "rep": rep,
+        "node_id": node_id,
+        "activity_name": meta.get("activity_name", f"Node {node_id}"),
+        "resource_name": meta.get("resource_name", "Unknown"),
+        "resource_capacity": meta.get("resource_capacity", 0),
+        "measure_scope": measure_scope,
+        "customer_class": customer_class if customer_class is not None else "All",
+        "n_service": n_service,
+        "mean_wait": mean_wait_service,
+        "mean_service": mean_service,
+        "mean_Lq": mean_lq,
+    }
+
+    # Utilisation is only available at node level from Ciw, so keep it on
+    # the overall row only rather than implying a class-specific split.
+    if measure_scope == "overall":
+        row["utilisation"] = meta.get("utilisation", 0.0)
+    else:
+        row["utilisation"] = None
+
+    # Add reneging metrics only for nodes that can renege.
+    if meta.get("has_reneging", False):
+        row.update(
+            {
+                "n_renege": n_renege,
+                "renege_rate": renege_rate,
+                "mean_wait_renege": mean_wait_renege,
+                "mean_wait_all": mean_wait_all,
+            }
+        )
+
+    return row
+
+
 def _single_run(
     network: ciw.Network,
     node_metadata: dict[int, dict[str, Any]],
+    customer_classes: list[str] | None = None,
     rep: int = 0,
     warmup: float = 0.0,
     runtime: float = 1000.0,
@@ -510,6 +623,9 @@ def _single_run(
         Configured Ciw network.
     node_metadata : dict of int to dict of str to Any
         Mapping from node identifiers to metadata.
+    customer_classes : list of str or None, optional
+        Customer class names defined in the model. If empty or `None`,
+        only overall node summaries are returned.
     rep : int, optional
         Replication index and random seed, by default 0.
     warmup : float, optional
@@ -520,20 +636,21 @@ def _single_run(
     Returns
     -------
     list of dict of str to Any
-        One result row per transitive node.
+        Tidy-format result rows for the replication.
 
     Notes
     -----
     The Ciw random number generators are seeded via `ciw.seed(rep)` to
     ensure reproducibility of each replication. Warmup filtering is applied
-    using the arrival times of customer records. This potentially needs
-    modifying at some point.
+    using the arrival times of customer records.
 
     """
     ciw.seed(rep)
     sim = ciw.Simulation(network)
     sim.simulate_until_max_time(runtime)
 
+    # Pull only service and reneging records, since those are the
+    # outcomes used by the current summary functions.
     recs = sim.get_all_records(only=["service", "renege"])
 
     # Warmup filter
@@ -542,61 +659,50 @@ def _single_run(
 
     rows = []
     horizon = runtime - warmup
+    customer_classes = customer_classes or []
 
     for node in sim.transitive_nodes:
         node_id = node.id_number
-        meta = node_metadata.get(node_id, {})
+        meta = node_metadata.get(node_id, {}).copy()
 
+        # Node-level utilisation comes directly from Ciw and should be
+        # attached to the overall row only.
+        meta["utilisation"] = node.server_utilisation * 100
+
+        # First collect all records for this node.
         node_recs = [r for r in recs if r.node == node_id]
-        service_recs = [r for r in node_recs if r.record_type == "service"]
-        renege_recs = [r for r in node_recs if r.record_type == "renege"]
 
-        service_waits = [r.waiting_time for r in service_recs]
-        renege_waits = [r.waiting_time for r in renege_recs]
-        all_waits = [r.waiting_time for r in node_recs]
-
-        service_times = [r.service_time for r in service_recs]
-
-        n_service = len(service_recs)
-        n_renege = len(renege_recs)
-
-        mean_wait_service = (
-            statistics.mean(service_waits) if service_waits else 0.0
-        )
-        mean_wait_renege = (
-            statistics.mean(renege_waits) if renege_waits else 0.0
-        )
-        mean_wait_all = statistics.mean(all_waits) if all_waits else 0.0
-        mean_service = statistics.mean(service_times) if service_times else 0.0
-
-        util = node.server_utilisation
-
-        total_wait_all = sum(all_waits)
-        mean_lq = total_wait_all / horizon if horizon > 0 else 0.0
-
-        row = {
-            "rep": rep,
-            "node_id": node_id,
-            "activity_name": meta.get("activity_name", f"Node {node_id}"),
-            "resource_name": meta.get("resource_name", "Unknown"),
-            "resource_capacity": meta.get("resource_capacity", 0),
-            "n_service": n_service,
-            "mean_wait": mean_wait_service,
-            "mean_service": mean_service,
-            "utilisation": util * 100,
-            "mean_Lq": mean_lq,
-        }
-
-        # if add in renege wait if needed.
-        if meta.get("has_reneging", False):
-            row.update(
-                {
-                    "n_renege": n_renege,
-                    "mean_wait_renege": mean_wait_renege,
-                    "mean_wait_all": mean_wait_all,
-                }
+        # Always append the overall node summary.
+        rows.append(
+            _build_result_row(
+                recs_subset=node_recs,
+                rep=rep,
+                node_id=node_id,
+                meta=meta,
+                horizon=horizon,
+                measure_scope="overall",
+                customer_class=None,
             )
+        )
 
-        rows.append(row)
+        # If customer classes are defined, also append one row per class.
+        # This includes zero rows for classes that never visit a node,
+        # which is useful for validating routing and service structure.
+        for class_name in customer_classes:
+            class_recs = [
+                r for r in node_recs if r.customer_class == class_name
+            ]
+
+            rows.append(
+                _build_result_row(
+                    recs_subset=class_recs,
+                    rep=rep,
+                    node_id=node_id,
+                    meta=meta,
+                    horizon=horizon,
+                    measure_scope="customer_class",
+                    customer_class=class_name,
+                )
+            )
 
     return rows
