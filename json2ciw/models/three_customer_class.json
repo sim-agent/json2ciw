@@ -1,0 +1,76 @@
+{
+  "name": "Simple Critical Care Model",
+  "description": "Three customer classes arriving to a shared critical care activity.",
+  "customer_classes": [
+    {
+      "name": "emergency_department",
+      "label": "Emergency Department"
+    },
+    {
+      "name": "surgery",
+      "label": "Surgery"
+    },
+    {
+      "name": "elective",
+      "label": "Elective"
+    }
+  ],
+  "activities": [
+    {
+      "name": "Critical care",
+      "type": "activity",
+      "resource": {
+        "name": "Critical care beds",
+        "capacity": 10
+      },
+      "arrival_distribution": {
+        "by_class": {
+          "emergency_department": {
+            "type": "exponential",
+            "parameters": { "mean": 1.0 }
+          },
+          "surgery": {
+            "type": "exponential",
+            "parameters": { "mean": 3.0 }
+          },
+          "elective": {
+            "type": "exponential",
+            "parameters": { "mean": 6.0 }
+          }
+        }
+      },
+      "service_distribution": {
+        "by_class": {
+          "emergency_department": {
+            "type": "gamma",
+            "parameters": { "shape": 3.0, "scale": 2.0 }
+          },
+          "surgery": {
+            "type": "gamma",
+            "parameters": { "shape": 2.5, "scale": 1.8 }
+          },
+          "elective": {
+            "type": "gamma",
+            "parameters": { "shape": 2.0, "scale": 1.5 }
+          }
+        }
+      }
+    },
+    {
+      "name": "Discharge",
+      "type": "activity",
+      "resource": {
+        "name": "Discharge staff",
+        "capacity": 2
+      },
+      "service_distribution": {
+        "type": "deterministic",
+        "parameters": { "value": 0.5 }
+      }
+    }
+  ],
+  "transitions": [
+    { "from": "Critical care", "to": "Discharge", "probability": 1.0 },
+    { "from": "Discharge", "to": "Exit", "probability": 1.0 }
+  ]
+}
