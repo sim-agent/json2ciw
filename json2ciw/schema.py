@@ -402,7 +402,8 @@ class ProcessModel(BaseModel):
         >>> model.to_mermaid(include_resources=False)
         """
     
-        lines = ["flowchart TD"]
+        #lines = ["```mermaid", "graph TD"]
+        lines = ["graph TD"]
 
         def make_node_id(name: str) -> str:
             """Create a Mermaid-safe node identifier.
@@ -517,6 +518,7 @@ class ProcessModel(BaseModel):
                 prob_label = f"{transition.probability:.0%}"
                 lines.append(f"    {source_id} -->|{prob_label}| {target_id}")
 
+        #lines.append("```")
         return "\n".join(lines)
 
 
@@ -528,9 +530,13 @@ class ProcessModel(BaseModel):
         include_resources : bool, optional
             Whether to include resource nodes, by default `True`.
 
-        """
+        """ 
+
+        prefix = "```mermaid \n"
+        postfix = " \n```"
         mermaid_code = self.to_mermaid(include_resources=include_resources)
-        display(Markdown(mermaid_code))
+
+        display(Markdown(prefix + mermaid_code + postfix))
 
     def save_diagram(
         self, filename: str, *, include_resources: bool = True
