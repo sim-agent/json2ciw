@@ -12,7 +12,7 @@ DEFAULT_METRICS = {
     "mean_n_renege": "Mean reneges",
     "mean_renege_rate": "Mean reneging rate",
     "mean_wait_renege": "Mean reneging wait",
-    "mean_wait_all": "Mean wait (all completed)",
+    "mean_wait_all": "Mean wait (all customers)",
 }
 
 
@@ -248,12 +248,12 @@ def tidy_to_wide_format(
 
     if include_resource_in_colname:
         activity = (
-            df_reps["activity_name"] + " (" + df_reps["resource_name"] + ")"
+            df_wide["activity_name"] + " (" + df_wide["resource_name"] + ")"
         )
     else:
-        activity = df_reps["activity_name"]
+        activity = df_wide["activity_name"]
 
-    df_reps = df_reps.assign(activity=activity)
+    df_wide = df_wide.assign(activity=activity)
 
     metric_cols = [
         "n_service",
@@ -269,9 +269,9 @@ def tidy_to_wide_format(
         "mean_wait_renege",
         "mean_wait_all",
     ]
-    metric_cols.extend([c for c in optional_cols if c in df_reps.columns])
+    metric_cols.extend([c for c in optional_cols if c in df_wide.columns])
 
-    df_metrics = df_reps[["rep", "activity", *metric_cols]]
+    df_metrics = df_wide[["rep", "activity", *metric_cols]]
 
     wide = df_metrics.pivot_table(
         index="rep",
