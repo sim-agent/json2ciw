@@ -13,6 +13,7 @@ SIX_NODE_UCC = "six_node_ucc.json"
 RENEGE = "call_renege.json"
 MM1_RENEGE = "mm1_renege.json"
 THREE_CLASSES = "three_customer_class.json"
+STROKE_PATHWAY = "stroke_pathway.json"
 
 
 def load_model_file(file_path: str | PathLike[str]) -> dict[str, Any]:
@@ -114,3 +115,14 @@ def load_three_classes_model() -> dict[str, Any]:
 
     """
     return load_model_file(MODELS_DIR / THREE_CLASSES)
+
+def load_stroke_pathway_model() -> dict[str, Any]:
+    """Load the M/M/1 reneging model specification.
+
+    Returns
+    -------
+    dict of str to Any
+        Parsed JSON model specification.
+
+    """
+    return load_model_file(MODELS_DIR / STROKE_PATHWAY)
