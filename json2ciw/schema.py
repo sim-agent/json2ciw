@@ -106,8 +106,9 @@ class Activity(BaseModel):
     arrival_distribution : Distribution or ClassDistributionMap or None
         Arrival distribution for entry activities, either shared across
         all customer classes or specified separately by customer class.
-    renege_distribution : Distribution or None
-        Reneging distribution for the activity.
+    renege_distribution : Distribution or ClassDistributionMap or None
+            Reneging distribution for the activity, either shared across
+            all customer classes or specified separately by customer class
 
     """
     name: str
@@ -115,7 +116,7 @@ class Activity(BaseModel):
     resource: Resource
     service_distribution: DistributionSpec
     arrival_distribution: DistributionSpec | None = None
-    renege_distribution: Distribution | None = None
+    renege_distribution: DistributionSpec | None = None
 
 
 class Transition(BaseModel):
@@ -191,6 +192,11 @@ class ProcessModel(BaseModel):
             check_distribution_keys(
                 activity.arrival_distribution,
                 "arrival_distribution",
+                activity.name,
+            )
+            check_distribution_keys(
+                activity.renege_distribution,
+                "renege_distribution",
                 activity.name,
             )
 
@@ -339,8 +345,9 @@ class ProcessModel(BaseModel):
         spec : DistributionSpec
             Distribution specification to summarise.
         context : str, optional
-            Rendering context. Use `"arrival"` for arrival summaries and
-            `"service"` for service summaries, by default `"service"`.
+            Rendering context. Use `"arrival"` for arrival summaries,
+            `"service"` for service summaries, and `"renege"` for
+            reneging summaries, by default `"service"`.
 
         Returns
         -------
@@ -354,6 +361,8 @@ class ProcessModel(BaseModel):
 
         if context == "arrival":
             return f"Class-specific arrival distributions (n={n_classes})"
+        if context == "renege":
+            return f"Class-specific reneging distributions (n={n_classes})"
         return f"Class-specific service distributions (n={n_classes})"
 
 
@@ -460,8 +469,11 @@ class ProcessModel(BaseModel):
             if activity.renege_distribution:
                 node_id = make_node_id(activity.name)
                 renege_id = f"Renege_{node_id}"
-                renege_info = self._format_dist(activity.renege_distribution)
-                lines.append(f'    {renege_id}{{{{"Renege</br>{renege_info}"}}}}')
+                renege_info = self._summarise_distribution_spec(
+                    activity.renege_distribution,
+                    context="renege",
+                )
+                lines.append(f' {renege_id}{{{{"Renege</br>{renege_info}"}}}}')
 
         # --- Resource nodes ---
         if include_resources:
@@ -604,19 +616,21 @@ class ProcessModel(BaseModel):
                 )
 
             if activity.renege_distribution:
-                dist = activity.renege_distribution
-                records.append(
-                    {
-                        "Activity": activity.name,
-                        "Phase": "Renege",
-                        "Customer Class": "All",
-                        "Customer Class Label": "All",
-                        "Distribution Type": dist.type.capitalize(),
-                        "Parameters": ", ".join(
-                            f"{k}={v}" for k, v in dist.parameters.items()
-                        ),
-                    }
-                )
+                for class_name, class_label, dist in self._iter_distribution_spec(
+                    activity.renege_distribution
+                ):
+                    records.append(
+                        {
+                            "Activity": activity.name,
+                            "Phase": "Renege",
+                            "Customer Class": class_name or "All",
+                            "Customer Class Label": class_label or "All",
+                            "Distribution Type": dist.type.capitalize(),
+                            "Parameters": ", ".join(
+                                f"{k}={v}" for k, v in dist.parameters.items()
+                            ),
+                        }
+                    )
 
         return pd.DataFrame(records)
 
