@@ -237,6 +237,15 @@ def tidy_to_wide_format(
         Wide-format replication results with one row per replication.
 
     """
+
+    df_wide = df_reps.copy()
+
+    # Keep this function focused on overall node summaries.
+    # If the replication output contains both overall and class-specific
+    # rows, filter to the overall rows only.
+    if "measure_scope" in df_wide.columns:
+        df_wide = df_wide[df_wide["measure_scope"] == "overall"].copy()
+
     if include_resource_in_colname:
         activity = (
             df_reps["activity_name"] + " (" + df_reps["resource_name"] + ")"
@@ -273,6 +282,139 @@ def tidy_to_wide_format(
 
     wide.columns = [
         f"{metric} [{activity}]" for metric, activity in wide.columns
+    ]
+
+    return wide
+
+def tidy_to_wide_format_by_class(
+    df_reps: pd.DataFrame,
+    *,
+    customer_class: str | None = None,
+    include_overall: bool = False,
+    class_label_map: dict[str, str] | None = None,
+) -> pd.DataFrame:
+    """Convert tidy replication results to class-specific wide format.
+
+    Parameters
+    ----------
+    df_reps : pandas.DataFrame
+        Tidy-format replication results from multiple_replications().
+    customer_class : str or None, optional
+        Specific customer class to include. If `None`, all customer
+        classes are included.
+    include_overall : bool, default False
+        Whether to include overall rows alongside class-specific rows.
+    class_label_map : dict or None, optional
+        Optional mapping from internal customer class names to friendly
+        display labels.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Wide-format class-specific replication results with one row per
+        replication.
+
+    """
+    df_wide = df_reps.copy()
+
+    # Keep this function focused on class-specific summaries.
+    # If the replication output contains measure scopes, default to the
+    # customer-class rows unless overall rows are explicitly requested.
+    if "measure_scope" in df_wide.columns:
+        if include_overall:
+            df_wide = df_wide[
+                df_wide["measure_scope"].isin(["overall", "customer_class"])
+            ].copy()
+        else:
+            df_wide = df_wide[
+                df_wide["measure_scope"] == "customer_class"
+            ].copy()
+
+    # If there is no customer_class column, fall back to a single "All"
+    # label so the function still behaves sensibly on older outputs.
+    if "customer_class" not in df_wide.columns:
+        df_wide["customer_class"] = "All"
+
+    # Filter to one class if requested.
+    if customer_class is not None:
+        keep_mask = df_wide["customer_class"] == customer_class
+        if include_overall and "measure_scope" in df_wide.columns:
+            keep_mask = keep_mask | (df_wide["measure_scope"] == "overall")
+        df_wide = df_wide[keep_mask].copy()
+
+    # Optionally map internal class names to display labels.
+    if class_label_map:
+        df_wide["customer_class_display"] = df_wide["customer_class"].map(
+            class_label_map
+        ).fillna(df_wide["customer_class"])
+    else:
+        df_wide["customer_class_display"] = df_wide["customer_class"]
+
+    # If overall rows are included, make the label explicit.
+    if "measure_scope" in df_wide.columns:
+        overall_mask = df_wide["measure_scope"] == "overall"
+        df_wide.loc[overall_mask, "customer_class_display"] = "Overall"
+
+    # Build column labels.
+    # If a single class has been selected, keep labels compact and use
+    # the activity name only. Otherwise include the customer class in the
+    # label to distinguish columns.
+    if customer_class is not None:
+        df_wide["activity_class"] = df_wide["activity_name"]
+    else:
+        df_wide["activity_class"] = (
+            df_wide["activity_name"]
+            + " - "
+            + df_wide["customer_class_display"]
+        )
+
+    # If overall rows are included together with a single class, mark the
+    # overall columns explicitly so they do not collide with class columns.
+    if customer_class is not None and include_overall:
+        if "measure_scope" in df_wide.columns:
+            overall_mask = df_wide["measure_scope"] == "overall"
+            df_wide.loc[overall_mask, "activity_class"] = (
+                df_wide.loc[overall_mask, "activity_name"] + " - Overall"
+            )
+
+    metric_cols = [
+        "n_service",
+        "mean_wait",
+        "mean_service",
+        "mean_Lq",
+    ]
+
+    # Utilisation is only meaningful for overall rows in the current
+    # engine output, since class-specific utilisation is not directly
+    # available from Ciw at node level.
+    if include_overall and "utilisation" in df_wide.columns:
+        if "measure_scope" in df_wide.columns:
+            util_source = df_wide[df_wide["measure_scope"] == "overall"]
+            if util_source["utilisation"].notna().any():
+                metric_cols.append("utilisation")
+        else:
+            metric_cols.append("utilisation")
+
+    optional_cols = [
+        "n_renege",
+        "renege_rate",
+        "mean_wait_renege",
+        "mean_wait_all",
+    ]
+    metric_cols.extend([c for c in optional_cols if c in df_wide.columns])
+
+    df_metrics = df_wide[["rep", "activity_class", *metric_cols]]
+
+    wide = df_metrics.pivot_table(
+        index="rep",
+        columns="activity_class",
+        values=metric_cols,
+        aggfunc="first",
+    )
+
+    wide.columns = [
+        f"{metric} [{activity_class}]"
+        for metric, activity_class in wide.columns
     ]
 
     return wide
