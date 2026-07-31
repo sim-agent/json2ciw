@@ -57,7 +57,7 @@
       }
     },
     {
-      "name": "Discharge",
+      "name": "Bed Turnaround",
       "type": "activity",
       "resource": {
         "name": "Discharge staff",
@@ -70,7 +70,7 @@
     }
   ],
   "transitions": [
-    { "from": "Critical care", "to": "Discharge", "probability": 1.0 },
-    { "from": "Discharge", "to": "Exit", "probability": 1.0 }
+    { "from": "Critical care", "to": "Bed Turnaround", "probability": 1.0 },
+    { "from": "Bed Turnaround", "to": "Exit", "probability": 1.0 }
   ]
 }
