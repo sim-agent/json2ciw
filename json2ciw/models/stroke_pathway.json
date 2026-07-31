@@ -99,12 +99,6 @@
       },
       "service_distribution": {
         "by_class": {
-          "tia": {
-            "type": "exponential",
-            "parameters": {
-              "mean": 3.0
-            }
-          },
           "mild_moderate_stroke": {
             "type": "exponential",
             "parameters": {
@@ -121,13 +115,6 @@
       },
       "renege_distribution": {
         "by_class": {
-          "tia": {
-            "type": "uniform",
-            "parameters": {
-              "min": 5.0,
-              "max": 10.0
-            }
-          },
           "mild_moderate_stroke": {
             "type": "uniform",
             "parameters": {
