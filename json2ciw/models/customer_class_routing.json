@@ -1,0 +1,114 @@
+{
+  "name": "Stroke pathway",
+  "description": "Simple multi-class stroke pathway with class-based routing.",
+  "customer_classes": [
+    { "name": "tia" },
+    { "name": "mild_moderate_stroke" },
+    { "name": "severe_stroke" }
+  ],
+  "activities": [
+    {
+      "name": "Acute Stroke Unit",
+      "type": "activity",
+      "resource": { "name": "Stroke beds", "capacity": 12 },
+      "arrival_distribution": {
+        "by_class": {
+          "tia": {
+            "type": "exponential",
+            "parameters": { "rate": 2.0 }
+          },
+          "mild_moderate_stroke": {
+            "type": "exponential",
+            "parameters": { "rate": 1.2 }
+          },
+          "severe_stroke": {
+            "type": "exponential",
+            "parameters": { "rate": 0.6 }
+          }
+        }
+      },
+      "service_distribution": {
+        "by_class": {
+          "tia": {
+            "type": "exponential",
+            "parameters": { "mean": 2.0 }
+          },
+          "mild_moderate_stroke": {
+            "type": "exponential",
+            "parameters": { "mean": 4.0 }
+          },
+          "severe_stroke": {
+            "type": "exponential",
+            "parameters": { "mean": 6.0 }
+          }
+        }
+      },
+      "renege_distribution": {
+        "by_class": {
+          "tia": {
+            "type": "uniform",
+            "parameters": { "min": 2.0, "max": 6.0 }
+          },
+          "mild_moderate_stroke": {
+            "type": "uniform",
+            "parameters": { "min": 4.0, "max": 10.0 }
+          },
+          "severe_stroke": {
+            "type": "uniform",
+            "parameters": { "min": 6.0, "max": 12.0 }
+          }
+        }
+      }
+    },
+    {
+      "name": "Rehab Unit",
+      "type": "activity",
+      "resource": { "name": "Rehab beds", "capacity": 8 },
+      "service_distribution": {
+        "by_class": {
+          "tia": {
+            "type": "deterministic",
+            "parameters": { "value": 0.0 }
+          },
+          "mild_moderate_stroke": {
+            "type": "exponential",
+            "parameters": { "mean": 8.0 }
+          },
+          "severe_stroke": {
+            "type": "exponential",
+            "parameters": { "mean": 14.0 }
+          }
+        }
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Acute Stroke Unit",
+      "to": "Rehab Unit",
+      "probability": {
+        "by_class": {
+          "tia": 0.0,
+          "mild_moderate_stroke": 0.6,
+          "severe_stroke": 0.9
+        }
+      }
+    },
+    {
+      "from": "Acute Stroke Unit",
+      "to": "Exit",
+      "probability": {
+        "by_class": {
+          "tia": 1.0,
+          "mild_moderate_stroke": 0.4,
+          "severe_stroke": 0.1
+        }
+      }
+    },
+    {
+      "from": "Rehab Unit",
+      "to": "Exit",
+      "probability": 1.0
+    }
+  ]
+}
