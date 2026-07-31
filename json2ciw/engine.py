@@ -269,13 +269,17 @@ class CiwConverter:
                     )
 
                 # -- Renege Distribution (Optional but Class-Keyed) --
-                # Reneging is currently shared at activity level in the
-                # schema, but in a multi-class Ciw model the parameter must
-                # still be provided per class if used anywhere.
+                # -- Renege Distribution (Optional and Class-Keyed) --
+                # Shared distributions apply to all classes. Class-specific
+                # distributions are looked up by customer class name.
                 if has_reneging:
-                    if act.renege_distribution is not None:
+                    ren_dist = self._resolve_distribution_spec(
+                        act.renege_distribution,
+                        customer_class=class_name,
+                    )
+                    if ren_dist is not None:
                         reneging_time_distributions[class_name].append(
-                            self._make_ciw_dist(act.renege_distribution)
+                            self._make_ciw_dist(ren_dist)
                         )
                     else:
                         reneging_time_distributions[class_name].append(None)
