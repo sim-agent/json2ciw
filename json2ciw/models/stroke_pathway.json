@@ -1,6 +1,6 @@
 {
-  "name": "Stroke pathway with class-specific reneging",
-  "description": "Simple multi-class stroke pathway with shared routing and class-specific arrival, service, and reneging distributions.",
+  "name": "Stroke pathway with class-specific routing and reneging",
+  "description": "Simple multi-class stroke pathway with class-specific routing, arrival, service, and reneging distributions.",
   "customer_classes": [
     { "name": "tia", "label": "TIA" },
     {
@@ -137,7 +137,24 @@
     {
       "from": "Acute Stroke Unit",
       "to": "Rehab Unit",
-      "probability": 1.0
+      "probability": {
+        "by_class": {
+          "tia": 0.0,
+          "mild_moderate_stroke": 0.6,
+          "severe_stroke": 0.9
+        }
+      }
+    },
+    {
+      "from": "Acute Stroke Unit",
+      "to": "Exit",
+      "probability": {
+        "by_class": {
+          "tia": 1.0,
+          "mild_moderate_stroke": 0.4,
+          "severe_stroke": 0.1
+        }
+      }
     },
     {
       "from": "Rehab Unit",
