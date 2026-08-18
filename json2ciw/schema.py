@@ -857,28 +857,63 @@ class ProcessModel(BaseModel):
     def get_routing_matrix_df(self) -> pd.DataFrame:
         """Return routing probabilities as a DataFrame.
 
+        For a model without customer classes, returns one routing matrix
+        with source activities as rows.
+
+        For a multi-class model, returns one routing matrix per customer
+        class using a MultiIndex of ``Customer Class`` and
+        ``Source Activity``.
+
         Returns
         -------
         pandas.DataFrame
-            Routing matrix with source activities as rows.
+            Routing matrix or class-specific routing matrices. Columns are
+            target activities plus ``Exit``.
 
         """
-        activities = [a.name for a in self.activities]
+        activities = [activity.name for activity in self.activities]
         targets = [*activities, "Exit"]
-        matrix = pd.DataFrame(0.0, index=activities, columns=targets)
-        matrix.index.name = "Source Activity"
+        class_names = [
+            customer_class.name for customer_class in self.customer_classes
+        ]
 
-        for transition in self.transitions:
-            if (
-                transition.source in matrix.index
-                and transition.target in matrix.columns
-            ):
+        # Preserve the original simple matrix shape for models without
+        # customer classes.
+        if not class_names:
+            matrix = pd.DataFrame(
+                0.0,
+                index=activities,
+                columns=targets,
+            )
+            matrix.index.name = "Source Activity"
+
+            for transition in self.transitions:
                 matrix.loc[transition.source, transition.target] = (
                     transition.probability
                 )
 
-        return matrix
+            return matrix
 
+        # Create one routing row for each customer-class/activity pair.
+        index = pd.MultiIndex.from_product(
+            [class_names, activities],
+            names=["Customer Class", "Source Activity"],
+        )
+        matrix = pd.DataFrame(0.0, index=index, columns=targets)
+
+        # Resolve each shared or class-specific probability before putting
+        # the scalar value into its appropriate class-specific matrix cell.
+        for customer_class in class_names:
+            for transition in self.transitions:
+                matrix.loc[
+                    (customer_class, transition.source),
+                    transition.target,
+                ] = self._resolve_probability_spec(
+                    transition.probability,
+                    customer_class,
+                )
+
+        return matrix
     def get_resources_df(self) -> pd.DataFrame:
         """Return activity resources as a DataFrame.
 
