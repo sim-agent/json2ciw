@@ -474,6 +474,67 @@ class ProcessModel(BaseModel):
             for class_name, dist in spec.by_class.items()
         ]
 
+    def _resolve_probability_spec(
+        self,
+        spec: ProbabilitySpec,
+        customer_class: str,
+    ) -> float:
+        """Resolve a transition probability for one customer class.
+
+        Parameters
+        ----------
+        spec : ProbabilitySpec
+            Shared scalar routing probability or a class-specific
+            probability mapping.
+        customer_class : str
+            Customer class name for which to resolve the probability.
+
+        Returns
+        -------
+        float
+            Routing probability for the requested customer class. A missing
+            class-specific value is treated as zero.
+
+        """
+        if isinstance(spec, ClassProbabilityMap):
+            return spec.by_class.get(customer_class, 0.0)
+
+        return spec
+
+    def _format_probability_spec(self, spec: ProbabilitySpec) -> str | None:
+        """Format a routing probability specification for Mermaid.
+
+        Parameters
+        ----------
+        spec : ProbabilitySpec
+            Shared scalar routing probability or a class-specific
+            probability mapping.
+
+        Returns
+        -------
+        str or None
+            Mermaid edge label. Returns `None` for a shared probability
+            of 1.0, allowing an unlabelled edge.
+
+        """
+        if not isinstance(spec, ClassProbabilityMap):
+            if spec == 1.0:
+                return None
+            return f"{spec:.0%}"
+
+        class_labels = {
+            customer_class.name: (
+                customer_class.label or customer_class.name
+            )
+            for customer_class in self.customer_classes
+        }
+
+        parts = [
+            f"{class_labels.get(class_name, class_name)}: {probability:.0%}"
+            for class_name, probability in spec.by_class.items()
+        ]
+
+        return "<br/>".join(parts)
 
     def _summarise_distribution_spec(
         self, spec: DistributionSpec, context: str = "service"
@@ -658,6 +719,19 @@ class ProcessModel(BaseModel):
                 lines.append(f"    {node_id} -.-> {renege_id}")
 
         # --- Edges: transitions ---
+        # for transition in self.transitions:
+        #     source_id = make_node_id(transition.source)
+        #     target_id = (
+        #         make_node_id(transition.target)
+        #         if transition.target != "Exit"
+        #         else "Exit"
+        #     )
+        #     if transition.probability == 1.0:
+        #         lines.append(f"    {source_id} --> {target_id}")
+        #     else:
+        #         prob_label = f"{transition.probability:.0%}"
+        #         lines.append(f"    {source_id} -->|{prob_label}| {target_id}")
+        # -- -Modified to handle multi-class.  Need to view summary to make decision.
         for transition in self.transitions:
             source_id = make_node_id(transition.source)
             target_id = (
@@ -665,11 +739,17 @@ class ProcessModel(BaseModel):
                 if transition.target != "Exit"
                 else "Exit"
             )
-            if transition.probability == 1.0:
-                lines.append(f"    {source_id} --> {target_id}")
+
+            probability_label = self._format_probability_spec(
+                transition.probability
+            )
+
+            if probability_label is None:
+                lines.append(f" {source_id} --> {target_id}")
             else:
-                prob_label = f"{transition.probability:.0%}"
-                lines.append(f"    {source_id} -->|{prob_label}| {target_id}")
+                lines.append(
+                    f" {source_id} -->|{probability_label}| {target_id}"
+                )
 
         #lines.append("```")
         return "\n".join(lines)
