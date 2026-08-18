@@ -9,18 +9,21 @@ Consistent identifier (represents all versions, resolves to latest): https://doi
 
 ## UNRELEADED (2026-07-30)
 
-Modified schema to support multiple customer classes i.e. multiple different types of entitiy that can have different arrival and service distributions.
+Modified schema to support multiple customer classes i.e. multiple different types of entitiy that can have different arrival,  service and renege distributions. This also supports class based routing between activities.
 
 ### Added
 
 * `schema.CustomerClass`, `schema.ClassDistributionMap` for modelling multiple customers and mapping multiple customer classes to arrival and service distribution, respectively.
-* `DistributionSpec` that is a `TypeAlias` for `Distribution` or `ClassDistributionMap`
+* `schema.DistributionSpec` that is a `TypeAlias` for `Distribution` or `ClassDistributionMap`
+* `schema.ClassProbabilityMap` for modelling class dependent routing.
+* `schema.ProbabilitySpec` that is a `TypeAlias` for `float` (when routing probabilities are aggregate) or `ClassProbabilityMap`
 
 ### Updated
 
 * `schema.ProcessModel`, `schema.Activity`. To accomodate `DistribuitionSpec` rather than just `Distribution`. Provides backward compatibility with `0.10
-* `schema.ProcessModel.to_mermaid` handles multiple arrival dists and services distributions. The former shown as individual flows (collapsable to single) and the latter is single flows with note that service dist is class specific.
+* `schema.ProcessModel.to_mermaid` handles multiple arrival, services & renege distributions. Arrivals shown as individual flows (collapsable to single) and service/renege is single flows with note that service dist is class specific. Class based routing is shown as edge label by class.  
 * `schema.get_distribution_df` displays distributions by class.
+* `schema.get_routing_matrix_df` display routing by class 
 
 ## 0.11.0 (2026-06-19)
 
