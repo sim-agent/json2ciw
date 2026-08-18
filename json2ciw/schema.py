@@ -54,6 +54,21 @@ class ClassDistributionMap(BaseModel):
 DistributionSpec: TypeAlias = Distribution | ClassDistributionMap
 
 
+class ClassProbabilityMap(BaseModel):
+    """Define class-specific routing probabilities.
+
+    Attributes
+    ----------
+    by_class : dict of str to float
+        Mapping from customer class name to the routing probability
+        used for that class.
+    """
+    by_class: dict[str, float]
+
+
+ProbabilitySpec: TypeAlias = float | ClassProbabilityMap
+
+
 class CustomerClass(BaseModel):
     """Define a customer class in the ProcessModel.
 
@@ -128,14 +143,15 @@ class Transition(BaseModel):
         Source activity name.
     target : str
         Target activity name or `"Exit"`.
-    probability : float
-        Transition probability.
+    probability : float or ClassProbabilityMap
+        Transition probability, either shared across all customer
+        classes or specified separately by customer class.
 
     """
 
     source: str = Field(..., alias="from")
     target: str = Field(..., alias="to")
-    probability: float = Field(..., ge=0.0, le=1.0)
+    probability: ProbabilitySpec
 
 
 class ProcessModel(BaseModel):
