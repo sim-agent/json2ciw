@@ -719,19 +719,6 @@ class ProcessModel(BaseModel):
                 lines.append(f"    {node_id} -.-> {renege_id}")
 
         # --- Edges: transitions ---
-        # for transition in self.transitions:
-        #     source_id = make_node_id(transition.source)
-        #     target_id = (
-        #         make_node_id(transition.target)
-        #         if transition.target != "Exit"
-        #         else "Exit"
-        #     )
-        #     if transition.probability == 1.0:
-        #         lines.append(f"    {source_id} --> {target_id}")
-        #     else:
-        #         prob_label = f"{transition.probability:.0%}"
-        #         lines.append(f"    {source_id} -->|{prob_label}| {target_id}")
-        # -- -Modified to handle multi-class.  Need to view summary to make decision.
         for transition in self.transitions:
             source_id = make_node_id(transition.source)
             target_id = (
@@ -914,6 +901,7 @@ class ProcessModel(BaseModel):
                 )
 
         return matrix
+    
     def get_resources_df(self) -> pd.DataFrame:
         """Return activity resources as a DataFrame.
 
