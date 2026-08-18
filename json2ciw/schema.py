@@ -216,46 +216,170 @@ class ProcessModel(BaseModel):
                 activity.name,
             )
 
+        # validate transitions
+        for transition in self.transitions:
+            if isinstance(transition.probability, ClassProbabilityMap):
+                if not allowed_classes:
+                    raise ValueError(
+                        "Class-specific routing probabilities require "
+                        "customer_classes to be defined."
+                    )
+                unknown = set(transition.probability.by_class) - allowed_classes
+                if unknown:
+                    raise ValueError(
+                        f"Transition '{transition.source}' -> "
+                        f"'{transition.target}' uses unknown customer "
+                        f"classes: {', '.join(sorted(unknown))}"
+                    )
+
+
         return self
 
     @model_validator(mode="after")
     def validate_transition_rows(self) -> Self:
-        activity_names: set[str] = {a.name for a in self.activities}
+        """Validate transition targets and outgoing routing probabilities.
+
+        For single-class models, outgoing probabilities must sum to 1.0
+        for every activity.
+
+        For multi-class models, each customer class has its own effective
+        routing probabilities. Shared scalar probabilities apply to every
+        class, while class-specific probabilities apply only to their
+        named class. The outgoing probabilities must therefore sum to 1.0
+        for every activity/customer-class combination.
+
+        Returns
+        -------
+        Self
+            Validated process model.
+
+        """
+        # Build the set of valid activity names. Transitions may point to
+        # another activity or to the special terminal "Exit" target.
+        activity_names: set[str] = {activity.name for activity in self.activities}
         allowed_targets = activity_names | {"Exit"}
 
-        probs_by_source = defaultdict(float)
+        # Extract class names once. An empty list denotes a single-class
+        # model, which retains the original scalar-routing behaviour.
+        class_names = [customer_class.name for customer_class in self.customer_classes]
 
-        for t in self.transitions:
-            if t.source not in activity_names:
-                raise ValueError(f"Transition 'from' unknown activity: {t.source}")
-            if t.target not in allowed_targets:
-                raise ValueError(f"Transition 'to' unknown target: {t.target}")
-            probs_by_source[t.source] += t.probability
-
+        # Floating-point tolerance for comparison
         tol = 1e-9
+
+        # First validate the activity names used by every transition.
+        # Do this before calculating probability totals, so errors refer
+        # directly to an invalid source or target.
+        for transition in self.transitions:
+            if transition.source not in activity_names:
+                raise ValueError(
+                    f"Transition 'from' unknown activity: {transition.source}"
+                )
+
+            if transition.target not in allowed_targets:
+                raise ValueError(
+                    f"Transition 'to' unknown target: {transition.target}"
+                )
+
+        # Single-class models cannot use a class-specific probability map.
+        # In this case, preserve the original rule: sum scalar probabilities
+        # once for each source activity.
+        if not class_names:
+            probs_by_source = defaultdict(float)
+
+            for transition in self.transitions:
+                if isinstance(transition.probability, ClassProbabilityMap):
+                    raise ValueError(
+                        "Class-specific routing probabilities require "
+                        "customer_classes to be defined."
+                    )
+
+                probs_by_source[transition.source] += transition.probability
+
+            missing_sources = []
+            bad_sums = []
+
+            # Each activity must have at least one outgoing transition, and
+            # its probabilities must add up to 1.0.
+            for activity in self.activities:
+                total = probs_by_source.get(activity.name, 0.0)
+
+                if total == 0.0:
+                    missing_sources.append(activity.name)
+                elif abs(total - 1.0) > tol:
+                    bad_sums.append((activity.name, total))
+
+            if missing_sources:
+                raise ValueError(
+                    "Missing outgoing transitions for activities (sum=0.0): "
+                    + ", ".join(missing_sources)
+                )
+
+            if bad_sums:
+                details = ", ".join(
+                    f"{activity_name} (sum={total})"
+                    for activity_name, total in bad_sums
+                )
+                raise ValueError(
+                    "Outgoing transition probabilities must sum to 1.0 for "
+                    f"each activity; problems: {details}"
+                )
+
+            return self
+
+        # Multi-class models need one probability total per source activity
+        # and per customer class. The nested defaultdict creates a zero-valued
+        # total automatically for unseen activity/class combinations.
+        probs_by_source_and_class = defaultdict(lambda: defaultdict(float))
+
+        for transition in self.transitions:
+            if isinstance(transition.probability, ClassProbabilityMap):
+                # A class-specific probability map may omit a class. An omitted
+                # class contributes zero probability on this transition; the
+                # full set of outgoing transitions must still total 1.0 for it.
+                for class_name in class_names:
+                    probs_by_source_and_class[transition.source][class_name] += (
+                        transition.probability.by_class.get(class_name, 0.0)
+                    )
+            else:
+                # A scalar probability is shared: it applies to every customer
+                # class in the model.
+                for class_name in class_names:
+                    probs_by_source_and_class[transition.source][class_name] += (
+                        transition.probability
+                    )
+
         missing_sources = []
         bad_sums = []
 
-        for a in self.activities:
-            total = probs_by_source.get(a.name, 0.0)
-            if total == 0.0:
-                missing_sources.append(a.name)
-            elif abs(total - 1.0) > tol:
-                bad_sums.append((a.name, total))
+        # Validate every activity/class combination independently. This is what
+        # allows, for example, TIA patients to exit from Acute Stroke Unit while
+        # severe-stroke patients route to the Rehab Unit.
+        for activity in self.activities:
+            for class_name in class_names:
+                total = probs_by_source_and_class[activity.name].get(
+                    class_name,
+                    0.0,
+                )
+
+                if total == 0.0:
+                    missing_sources.append(f"{activity.name} [{class_name}]")
+                elif abs(total - 1.0) > tol:
+                    bad_sums.append((activity.name, class_name, total))
 
         if missing_sources:
             raise ValueError(
-                "Missing outgoing transitions for activities (sum=0.0): "
-                + ", ".join(missing_sources)
+                "Missing outgoing transitions for activity/customer class "
+                "(sum=0.0): " + ", ".join(missing_sources)
             )
 
         if bad_sums:
             details = ", ".join(
-                [f"{name} (sum={total})" for name, total in bad_sums]
+                f"{activity_name} [{class_name}] (sum={total})"
+                for activity_name, class_name, total in bad_sums
             )
             raise ValueError(
                 "Outgoing transition probabilities must sum to 1.0 for each "
-                f"activity; problems: {details}"
+                f"activity and customer class; problems: {details}"
             )
 
         return self
