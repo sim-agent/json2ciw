@@ -1,0 +1,124 @@
+{
+  "name": "Paediatric clinic",
+  "description": "A 24-hour paediatric clinic with babies and children sharing reception before routing to separate specialist clinics. Babies register for an average of 15 minutes and children for an average of 10 minutes. Both specialist appointment types last an average of one hour.",
+  "customer_classes": [
+    {
+      "name": "Baby",
+      "label": "Babies"
+    },
+    {
+      "name": "Child",
+      "label": "Children"
+    }
+  ],
+  "activities": [
+    {
+      "name": "Reception",
+      "type": "activity",
+      "resource": {
+        "name": "Receptionist",
+        "capacity": 1
+      },
+      "arrival_distribution": {
+        "by_class": {
+          "Baby": {
+            "type": "exponential",
+            "parameters": {
+              "rate": 1.0
+            }
+          },
+          "Child": {
+            "type": "exponential",
+            "parameters": {
+              "rate": 2.0
+            }
+          }
+        }
+      },
+      "service_distribution": {
+        "by_class": {
+          "Baby": {
+            "type": "exponential",
+            "parameters": {
+              "rate": 4.0
+            }
+          },
+          "Child": {
+            "type": "exponential",
+            "parameters": {
+              "rate": 6.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Baby Specialist Clinic",
+      "type": "activity",
+      "resource": {
+        "name": "Baby specialists",
+        "capacity": 2
+      },
+      "service_distribution": {
+        "by_class": {
+          "Baby": {
+            "type": "exponential",
+            "parameters": {
+              "rate": 1.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Children's Specialist Clinic",
+      "type": "activity",
+      "resource": {
+        "name": "Children's specialists",
+        "capacity": 3
+      },
+      "service_distribution": {
+        "by_class": {
+          "Child": {
+            "type": "exponential",
+            "parameters": {
+              "rate": 1.0
+            }
+          }
+        }
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Reception",
+      "to": "Baby Specialist Clinic",
+      "probability": {
+        "by_class": {
+          "Baby": 1.0,
+          "Child": 0.0
+        }
+      }
+    },
+    {
+      "from": "Reception",
+      "to": "Children's Specialist Clinic",
+      "probability": {
+        "by_class": {
+          "Baby": 0.0,
+          "Child": 1.0
+        }
+      }
+    },
+    {
+      "from": "Baby Specialist Clinic",
+      "to": "Exit",
+      "probability": 1.0
+    },
+    {
+      "from": "Children's Specialist Clinic",
+      "to": "Exit",
+      "probability": 1.0
+    }
+  ]
+}
