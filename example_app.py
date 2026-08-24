@@ -10,6 +10,8 @@ from json2ciw.datasets import (
     load_renege_call_model,
     load_six_node_ucc_model,
     load_three_node_network_model,
+    load_stroke_pathway_model,
+    load_paeds_pathway_model,
 )
 from json2ciw.engine import CiwConverter
 from json2ciw.schema import ProcessModel
@@ -25,6 +27,8 @@ model_loaders = {
     "Urgent Care Treatment Centre": load_six_node_ucc_model,
     "Renge Call Centre": load_renege_call_model,
     "M/M/1 with Renege": load_mm1_renege_model,
+    "Stroke Pathway Model": load_stroke_pathway_model,
+    "Paedatric Pathway Model": load_paeds_pathway_model,
 }
 
 # Create a dropdown to select the model

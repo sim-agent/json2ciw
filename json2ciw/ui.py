@@ -1,4 +1,4 @@
-"""Create a Streamlit user interface."""
+"""Create a Streamlit UI for single- and multi-class Ciw models."""
 
 from typing import Any
 
@@ -6,117 +6,337 @@ import ciw
 import pandas as pd
 import streamlit as st
 
-from .engine import CiwConverter, multiple_replications
-from .results import (
-    create_user_filtered_hist,
-    summarise_results,
-    tidy_to_wide_format,
-)
+from .engine import multiple_replications
+from .results import create_user_filtered_hist, summarise_results, tidy_to_wide_format
 from .schema import ProcessModel
 
 
-def _render_distribution_ui(
-    dist: Any,
-    node_name: str,
-    dist_type: str,
-) -> Any | None:
-    """Render sidebar controls based on included distributions.
+def _widget_key(*parts: str) -> str:
+    """Create a stable Streamlit widget key.
 
     Parameters
     ----------
-    dist : Any
-        Ciw distribution object.
-    node_name : str
-        Node name used in widget keys.
-    dist_type : str
-        Distribution role label used in widget keys.
+    *parts : str
+        Components that uniquely identify a widget.
+
+    Returns
+    -------
+    str
+        Components concatenated into a single Streamlit key.
+    """
+    return "__".join(str(part) for part in parts)
+
+
+def _render_distribution_ui(
+    dist: Any | None,
+    *,
+    location: Any,
+    widget_prefix: str,
+) -> Any | None:
+    """Render an editor for one Ciw distribution.
+
+    Parameters
+    ----------
+    dist : Any or None
+        Ciw distribution object to edit. ``None`` denotes no arrivals or no
+        reneging at an activity for the relevant customer class.
+    location : Any
+        Streamlit container to which widgets should be written, for example
+        ``st.sidebar`` or ``st`` within a tab.
+    widget_prefix : str
+        Unique prefix used to construct all associated Streamlit widget keys.
 
     Returns
     -------
     Any or None
-        Updated distribution object, or `None` if no distribution is set.
+        A newly constructed Ciw distribution containing the values selected by
+        the user, or ``None`` when no distribution is defined.
 
+    Notes
+    -----
+    This function edits Ciw objects rather than schema distributions because
+    ``default_params`` is the representation supplied directly to
+    ``ciw.create_network``.
     """
     if dist is None:
+        location.caption("No distribution.")
         return None
 
     dist_class = type(dist).__name__
+    location.caption(dist_class)
 
-    st.sidebar.markdown(f"*{dist_class}*")
-
-    # Render different inputs based on the distribution class
     if dist_class == "Exponential":
-        rate = st.sidebar.number_input(
-            "Rate",
-            value=float(dist.rate),
-            format="%.4f",
-            key=f"{dist_type}_rate_{node_name}",
+        rate = location.number_input(
+            "Rate", min_value=1e-12, value=float(dist.rate), format="%.6f",
+            key=_widget_key(widget_prefix, "rate"),
         )
-        return type(dist)(rate=rate)
+        return ciw.dists.Exponential(rate=rate)
 
     if dist_class == "Triangular":
-        col1, col2, col3 = st.sidebar.columns(3)
-        lower = col1.number_input(
-            "Lower",
-            value=float(dist.lower),
-            key=f"{dist_type}_tl_{node_name}",
-            min_value=0.0,
-        )
-        mode = col2.number_input(
-            "Mode",
-            value=float(dist.mode),
-            key=f"{dist_type}_tm_{node_name}",
-            min_value=0.0,
-        )
-        upper = col3.number_input(
-            "Upper",
-            value=float(dist.upper),
-            key=f"{dist_type}_tu_{node_name}",
-            min_value=0.0,
-        )
-        return type(dist)(lower=lower, mode=mode, upper=upper)
+        lower_col, mode_col, upper_col = location.columns(3)
+        lower = lower_col.number_input("Lower", min_value=0.0, value=float(dist.lower), key=_widget_key(widget_prefix, "lower"))
+        mode = mode_col.number_input("Mode", min_value=0.0, value=float(dist.mode), key=_widget_key(widget_prefix, "mode"))
+        upper = upper_col.number_input("Upper", min_value=0.0, value=float(dist.upper), key=_widget_key(widget_prefix, "upper"))
+        if not lower <= mode <= upper:
+            location.error("Triangular parameters must satisfy lower ≤ mode ≤ upper.")
+        return ciw.dists.Triangular(lower=lower, mode=mode, upper=upper)
 
     if dist_class == "Uniform":
-        col1, col2 = st.sidebar.columns(2)
-        lower = col1.number_input(
-            "Lower", value=float(dist.lower), key=f"{dist_type}_ul_{node_name}"
-        )
-        upper = col2.number_input(
-            "Upper", value=float(dist.upper), key=f"{dist_type}_uu_{node_name}"
-        )
-        return type(dist)(lower=lower, upper=upper)
+        lower_col, upper_col = location.columns(2)
+        lower = lower_col.number_input("Lower", min_value=0.0, value=float(dist.lower), key=_widget_key(widget_prefix, "lower"))
+        upper = upper_col.number_input("Upper", min_value=0.0, value=float(dist.upper), key=_widget_key(widget_prefix, "upper"))
+        if lower > upper:
+            location.error("Uniform lower bound must not exceed upper bound.")
+        return ciw.dists.Uniform(lower=lower, upper=upper)
 
     if dist_class == "Deterministic":
-        value = st.sidebar.number_input(
-            "Value", value=float(dist.value), key=f"{dist_type}_d_{node_name}"
-        )
-        return type(dist)(value=value)
+        value = location.number_input("Value", min_value=0.0, value=float(dist.value), key=_widget_key(widget_prefix, "value"))
+        return ciw.dists.Deterministic(value=value)
 
-    if dist_class == "Lognormal":
-        col1, col2 = st.sidebar.columns(2)
-        mean = col1.number_input(
-            "mean", value=float(dist.mean), key=f"{dist_type}_ul_{node_name}"
-        )
-        sd = col2.number_input(
-            "sd", value=float(dist.sd), key=f"{dist_type}_uu_{node_name}"
-        )
+    if dist_class == "Gamma":
+        shape_col, scale_col = location.columns(2)
+        shape = shape_col.number_input("Shape", min_value=1e-12, value=float(dist.shape), key=_widget_key(widget_prefix, "shape"))
+        scale = scale_col.number_input("Scale", min_value=1e-12, value=float(dist.scale), key=_widget_key(widget_prefix, "scale"))
+        return ciw.dists.Gamma(shape=shape, scale=scale)
 
-        # convert to mu sigma of the underlying normal
-        mu, sigma = CiwConverter.normal_moments_from_lognormal(mean, sd)
-        return type(dist)(mean=mu, sd=sigma)
+    if dist_class in {"Normal", "Lognormal"}:
+        mean_col, sd_col = location.columns(2)
+        mean_label = "μ (underlying normal)" if dist_class == "Lognormal" else "Mean"
+        mean = mean_col.number_input(mean_label, value=float(dist.mean), key=_widget_key(widget_prefix, "mean"))
+        sd = sd_col.number_input("SD", min_value=1e-12, value=float(dist.sd), key=_widget_key(widget_prefix, "sd"))
+        if dist_class == "Lognormal":
+            location.caption("Ciw stores lognormal parameters as μ and σ of the underlying normal.")
+            return ciw.dists.Lognormal(mean=mean, sd=sd)
+        return ciw.dists.Normal(mean=mean, sd=sd)
 
-    if dist_class == "Normal":
-        col1, col2 = st.sidebar.columns(2)
-        mean = col1.number_input(
-            "mean", value=float(dist.mean), key=f"{dist_type}_ul_{node_name}"
-        )
-        sd = col2.number_input(
-            "sd", value=float(dist.sd), key=f"{dist_type}_uu_{node_name}"
-        )
-        return type(dist)(mean=mean, sd=sd)
-
-    st.sidebar.warning(f"UI for {dist_class} not implemented. Using defaults.")
+    location.warning(f"No editor for {dist_class}; using its original value.")
     return dist
+
+
+def _class_labels(
+    model_metadata: dict[str, Any],
+    default_params: dict[str, Any],
+) -> dict[str, str]:
+    """Map customer-class names to display labels in Ciw parameter order.
+
+    Parameters
+    ----------
+    model_metadata : dict of str to Any
+        Serialised model metadata, including optional ``customer_classes``
+        entries with ``name`` and ``label`` fields.
+    default_params : dict of str to Any
+        Ciw network arguments produced by ``CiwConverter.generate_params``.
+
+    Returns
+    -------
+    dict of str to str
+        Mapping of machine-readable class names to display labels. An empty
+        mapping indicates a single-class model.
+    """
+    arrivals = default_params["arrival_distributions"]
+    class_names = list(arrivals) if isinstance(arrivals, dict) else []
+    labels_from_json = {
+        customer_class["name"]: customer_class.get("label") or customer_class["name"]
+        for customer_class in model_metadata.get("customer_classes", [])
+    }
+    return {name: labels_from_json.get(name, name) for name in class_names}
+
+
+def _routing_frame_from_model(
+    process_model: ProcessModel,
+    node_names: list[str],
+    customer_class: str | None = None,
+) -> pd.DataFrame:
+    """Return an editable routing table with an explicit Exit column.
+
+    Parameters
+    ----------
+    process_model : ProcessModel
+        Validated source model used to initialise the routing editor.
+    node_names : list of str
+        Activity names in the Ciw node order.
+    customer_class : str or None, optional
+        Customer class for which to retrieve a routing matrix. Use ``None``
+        for a single-class model.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Routing probabilities with source activities as rows and internal
+        destinations plus ``Exit`` as columns.
+
+    Notes
+    -----
+    Ciw may normalise list-based routing matrices into ``TransitionMatrix``
+    objects. Reading from ``ProcessModel`` avoids depending on Ciw's internal
+    object representation and preserves explicit Exit probabilities.
+    """
+    routing = process_model.get_routing_matrix_df()
+    if customer_class is not None:
+        routing = routing.xs(customer_class, level="Customer Class")
+    return routing.loc[node_names, [*node_names, "Exit"]].astype(float).copy()
+
+
+def _validate_and_extract_routing(
+    edited: pd.DataFrame,
+    node_names: list[str],
+    scope_label: str,
+) -> tuple[list[list[float]] | None, list[str]]:
+    """Validate a complete UI routing table and make a Ciw matrix.
+
+    Parameters
+    ----------
+    edited : pandas.DataFrame
+        Editable routing table containing all internal destination columns and
+        an ``Exit`` column.
+    node_names : list of str
+        Internal activity names, in Ciw node order.
+    scope_label : str
+        Human-readable class or routing label used in validation messages.
+
+    Returns
+    -------
+    matrix : list of list of float or None
+        Internal-node routing matrix ready for Ciw. ``None`` is returned if
+        validation fails.
+    errors : list of str
+        User-facing validation messages. Empty when the matrix is valid.
+
+    Notes
+    -----
+    Ciw does not receive an explicit Exit column; its residual row probability
+    represents exit. The UI retains that column to make rows auditable and to
+    enforce a total probability of exactly one.
+    """
+    numeric = edited.apply(pd.to_numeric, errors="coerce")
+    if numeric.isna().any().any():
+        return None, [f"{scope_label}: all routing entries must be numeric."]
+
+    errors: list[str] = []
+    for source, row in numeric.iterrows():
+        probabilities = row.to_numpy(dtype=float)
+        total = probabilities.sum()
+        if (probabilities < -1e-9).any() or (probabilities > 1.0 + 1e-9).any():
+            errors.append(f"{scope_label}, {source}: each probability must be between 0 and 1.")
+        if abs(total - 1.0) > 1e-9:
+            errors.append(f"{scope_label}, {source}: row total is {total:.6g}; it must equal 1.")
+
+    if errors:
+        return None, errors
+    return numeric.loc[node_names, node_names].to_numpy(dtype=float).tolist(), []
+
+
+def _render_node_controls(
+    default_params: dict[str, Any],
+    activities: list[dict[str, Any]],
+    node_names: list[str],
+    class_labels: dict[str, str],
+) -> dict[str, Any]:
+    """Render resource and distribution controls.
+
+    Parameters
+    ----------
+    default_params : dict of str to Any
+        Baseline Ciw network arguments generated by the converter.
+    activities : list of dict of str to Any
+        Serialised activity metadata used to label resources.
+    node_names : list of str
+        Activity names in Ciw node order.
+    class_labels : dict of str to str
+        Customer-class names and their display labels. Empty for a single-class
+        model.
+
+    Returns
+    -------
+    dict of str to Any
+        Fresh Ciw arguments containing resource and distribution values chosen
+        by the user. Routing is added separately by the routing tab.
+    """
+    is_multiclass = bool(class_labels)
+    has_reneging = "reneging_time_distributions" in default_params
+    updated_params: dict[str, Any] = {
+        "number_of_servers": [],
+        "arrival_distributions": {} if is_multiclass else [],
+        "service_distributions": {} if is_multiclass else [],
+    }
+    if has_reneging:
+        updated_params["reneging_time_distributions"] = {} if is_multiclass else []
+
+    if is_multiclass:
+        for class_name in class_labels:
+            updated_params["arrival_distributions"][class_name] = []
+            updated_params["service_distributions"][class_name] = []
+            if has_reneging:
+                updated_params["reneging_time_distributions"][class_name] = []
+
+    distribution_roles = (
+        ("arrival", "arrival_distributions", "Arrival distribution"),
+        ("service", "service_distributions", "Service distribution"),
+        ("renege", "reneging_time_distributions", "Reneging distribution"),
+    )
+    st.sidebar.header("Resources and distributions")
+    st.sidebar.caption("Resources are shared. Distribution values are class-specific in multi-class models.")
+
+    for index, node_name in enumerate(node_names):
+        activity = activities[index] if index < len(activities) else {}
+        resource_name = activity.get("resource", {}).get("name", "Servers")
+        st.sidebar.subheader(node_name)
+        servers = st.sidebar.number_input(
+            f"Number of {resource_name}", min_value=1,
+            value=int(default_params["number_of_servers"][index]), step=1,
+            key=_widget_key("servers", node_name),
+        )
+        updated_params["number_of_servers"].append(int(servers))
+
+        if not is_multiclass:
+            for role, parameter_name, heading in distribution_roles:
+                if parameter_name in default_params:
+                    st.sidebar.markdown(f"**{heading}**")
+                    updated_params[parameter_name].append(_render_distribution_ui(
+                        default_params[parameter_name][index], location=st.sidebar,
+                        widget_prefix=_widget_key(node_name, role),
+                    ))
+            st.sidebar.divider()
+            continue
+
+        class_tabs = st.sidebar.tabs(list(class_labels.values()))
+        for (class_name, _), class_tab in zip(class_labels.items(), class_tabs, strict=True):
+            with class_tab:
+                for role, parameter_name, heading in distribution_roles:
+                    if parameter_name in default_params:
+                        st.markdown(f"**{heading}**")
+                        updated_params[parameter_name][class_name].append(_render_distribution_ui(
+                            default_params[parameter_name][class_name][index], location=st,
+                            widget_prefix=_widget_key(node_name, class_name, role),
+                        ))
+        st.sidebar.divider()
+
+    return updated_params
+
+
+def _model_for_results(
+    process_model: ProcessModel,
+    number_of_servers: list[int],
+) -> ProcessModel:
+    """Copy result metadata and apply edited resource capacities.
+
+    Parameters
+    ----------
+    process_model : ProcessModel
+        Original validated model.
+    number_of_servers : list of int
+        User-selected capacities in activity order.
+
+    Returns
+    -------
+    ProcessModel
+        Deep copy of the model whose resource capacities match the Ciw network
+        being run. This ensures result tables display the used capacities.
+    """
+    run_model = process_model.model_copy(deep=True)
+    for activity, capacity in zip(run_model.activities, number_of_servers, strict=True):
+        activity.resource.capacity = capacity
+    return run_model
 
 
 def render_simulation_app(
@@ -124,155 +344,118 @@ def render_simulation_app(
     model_metadata: dict[str, Any],
     valid_process_model: ProcessModel | None = None,
 ) -> None:
-    """Render the simulation app and run the selected model.
+    """Render an editable Streamlit simulation app and run Ciw.
 
     Parameters
     ----------
     default_params : dict of str to Any
-        Default Ciw network parameters.
+        Baseline arguments from ``CiwConverter.generate_params``. Single-class
+        models use list-based Ciw arguments; multi-class models use dictionaries
+        keyed by customer-class name.
     model_metadata : dict of str to Any
-        Model metadata used to label the interface.
+        Serialised model metadata used for titles, descriptions, activity names,
+        resource labels, and customer-class labels.
     valid_process_model : ProcessModel or None, optional
-        Validated process model passed to the simulation engine, by
-        default `None`.
+        Validated model used to construct initial routing tables and to label
+        simulation results. It is required for this UI.
 
+    Returns
+    -------
+    None
+        The function writes all interface elements and results to Streamlit.
+
+    Notes
+    -----
+    A click on ``Run simulation`` creates a new Ciw network from the current
+    user-edited ``updated_params``. Thus routing, resource, and distribution
+    changes apply to that run without mutating the baseline ProcessModel.
     """
-    # --- UI: MAIN HEADER ---
     st.title(model_metadata.get("name", "Discrete Event Simulation Runner"))
-    description = model_metadata.get(
-        "description",
-        "No description provided.",
-    )
-    st.markdown(f"**Description:** {description}")
+    if description := model_metadata.get("description"):
+        st.markdown(f"**Description:** {description}")
 
-    num_nodes = len(default_params["number_of_servers"])
+    if valid_process_model is None:
+        st.error("A validated ProcessModel is required to render this application.")
+        return
 
-    # Extract node names from JSON metadata if available
     activities = model_metadata.get("activities", [])
-    node_names = (
-        [act["name"] for act in activities]
-        if activities
-        else [f"Node {i}" for i in range(num_nodes)]
-    )
+    num_nodes = len(default_params["number_of_servers"])
+    node_names = [activity["name"] for activity in activities] or [f"Node {index + 1}" for index in range(num_nodes)]
+    if len(node_names) != num_nodes:
+        st.error("Metadata activities do not match the generated Ciw network.")
+        return
 
-    # --- UI: PARAMETER MANIPULATION (SIDEBAR) ---
-    st.sidebar.header("Resource & Distribution Parameters")
-    updated_params = {
-        "number_of_servers": [],
-        "arrival_distributions": [],
-        "service_distributions": [],
-        "reneging_time_distributions": [],
-        "routing": [],
-    }
+    class_labels = _class_labels(model_metadata, default_params)
+    if class_labels:
+        st.info("Multi-class model: class-specific arrival, service, reneging, and routing parameters are enabled.")
+    updated_params = _render_node_controls(default_params, activities, node_names, class_labels)
 
-    for index in range(num_nodes):
-        node_name = node_names[index]
-        st.sidebar.subheader(f"{node_name}")
+    settings_tab, routing_tab = st.tabs(["Run settings", "Routing"])
+    with settings_tab:
+        reps_col, warmup_col, runtime_col = st.columns(3)
+        num_reps = reps_col.number_input("Replications", min_value=1, value=100, step=5)
+        warmup = warmup_col.number_input("Warm-up time", min_value=0.0, value=0.0, step=100.0)
+        runtime = runtime_col.number_input("Run length", min_value=1.0, value=1440.0, step=100.0)
+        if warmup >= runtime:
+            st.warning("Warm-up time must be smaller than run length.")
 
-        # Extract specific resource name if available in JSON
-        resource_name = "Servers"
-        if index < len(activities) and "resource" in activities[index]:
-            resource_name = activities[index]["resource"]["name"]
-
-        # Resourcing
-        servers = st.sidebar.slider(
-            f"Number of {resource_name}",
-            min_value=1,
-            max_value=50,
-            value=int(default_params["number_of_servers"][index]),
-            key=f"server_{node_name}",
-        )
-        updated_params["number_of_servers"].append(servers)
-
-        # Arrival Distribution (Conditional Header)
-        arr_dist_data = default_params["arrival_distributions"][index]
-        if arr_dist_data is not None:
-            st.sidebar.markdown("**Arrival Distribution**")
-        arr_dist = _render_distribution_ui(arr_dist_data, node_name, "Arrival")
-        updated_params["arrival_distributions"].append(arr_dist)
-
-        # Service Distribution (Conditional Header)
-        srv_dist_data = default_params["service_distributions"][index]
-        if srv_dist_data is not None:
-            st.sidebar.markdown("**Service Distribution**")
-        srv_dist = _render_distribution_ui(srv_dist_data, node_name, "Service")
-        updated_params["service_distributions"].append(srv_dist)
-
-        # Reneging Distribution (Conditional Header)
-        renege_dist_data = default_params["reneging_time_distributions"][index]
-        if renege_dist_data is not None:
-            st.sidebar.markdown("**Renege Distribution**")
-        renege_dist = _render_distribution_ui(
-            renege_dist_data, node_name, "Renege"
-        )
-        updated_params["reneging_time_distributions"].append(renege_dist)
-
-        st.sidebar.divider()
-
-    # --- UI: MAIN PANEL TABS ---
-    tab_settings, tab_routing = st.tabs(["Run Settings", "Routing Logic"])
-
-    with tab_settings:
-        st.markdown("### Run Settings")
-        # Change 1: Columns side-by-side
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            num_reps = st.number_input(
-                "Replications", min_value=1, value=100, step=5
+    routing_errors: list[str] = []
+    with routing_tab:
+        st.markdown("Edit complete routing rows, including **Exit**. Every row must sum to 1.")
+        if class_labels:
+            class_tabs = st.tabs(list(class_labels.values()))
+            routing: dict[str, list[list[float]]] = {}
+            for (class_name, class_label), class_tab in zip(class_labels.items(), class_tabs, strict=True):
+                with class_tab:
+                    edited = st.data_editor(
+                        _routing_frame_from_model(valid_process_model, node_names, customer_class=class_name),
+                        key=_widget_key("routing", class_name), width="stretch",
+                    )
+                    matrix, errors = _validate_and_extract_routing(edited, node_names, class_label)
+                    routing_errors.extend(errors)
+                    if matrix is not None:
+                        routing[class_name] = matrix
+            if len(routing) == len(class_labels):
+                updated_params["routing"] = routing
+        else:
+            edited = st.data_editor(
+                _routing_frame_from_model(valid_process_model, node_names),
+                key="routing", width="stretch",
             )
-        with col2:
-            warmup = st.number_input(
-                "Warm-up Time", min_value=0, value=0, step=100
+            matrix, routing_errors = _validate_and_extract_routing(edited, node_names, "Routing")
+            if matrix is not None:
+                updated_params["routing"] = matrix
+
+    if not st.button("Run simulation", type="primary"):
+        return
+    if warmup >= runtime:
+        st.error("Warm-up time must be smaller than run length.")
+        return
+    if routing_errors:
+        for error in routing_errors:
+            st.error(error)
+        return
+    if "routing" not in updated_params:
+        st.error("Correct the routing matrix before running the simulation.")
+        return
+
+    run_model = _model_for_results(valid_process_model, updated_params["number_of_servers"])
+    with st.spinner(f"Running {num_reps} replications of {model_metadata.get('name', 'the model')}…"):
+        try:
+            network = ciw.create_network(**updated_params)
+            tidy = multiple_replications(
+                network, run_model, warmup=float(warmup),
+                num_reps=int(num_reps), runtime=float(runtime),
             )
-        with col3:
-            runtime = st.number_input(
-                "Run length", min_value=1, value=1440, step=100
-            )
+        except Exception as error:
+            st.exception(error)
+            return
 
-    with tab_routing:
-        # Change 3: Routing Matrix in its own tab
-        st.markdown("### Routing Matrix")
-        df_routing = pd.DataFrame(
-            default_params["routing"], columns=node_names, index=node_names
-        )
-
-        st.write("Edit transition probabilities below:")
-        edited_routing = st.data_editor(
-            df_routing, key="routing_editor", width="stretch"
-        )
-        updated_params["routing"] = edited_routing.to_numpy().tolist()
-
-    st.markdown("---")  # Visual separator before the run button
-
-    # --- MAIN PANEL: EXECUTION ---
-    if st.button("Run Simulation", type="primary", width="content"):
-        with st.spinner(
-            f"Running {num_reps} replications of "
-            f"{model_metadata.get('name', 'the model')}..."
-        ):
-            try:
-                network = ciw.create_network(**updated_params)
-
-                df_reps_tidy = multiple_replications(
-                    network,
-                    valid_process_model,
-                    warmup=warmup,
-                    num_reps=num_reps,
-                    runtime=runtime,
-                )
-
-                st.success("Simulation complete!")
-
-                st.subheader("Summary Results")
-                summary = summarise_results(df_reps_tidy).round(2)
-                st.dataframe(summary, width="stretch")
-
-                st.subheader("Histogram of Replications")
-                df_reps_wide = tidy_to_wide_format(df_reps_tidy)
-                st.plotly_chart(create_user_filtered_hist(df_reps_wide))
-
-                with st.expander("View Detailed Replication Data"):
-                    st.dataframe(df_reps_wide, width="stretch")
-
-            except Exception as e:
-                st.error(f"Simulation Error: {e!s}")
+    st.success("Simulation complete.")
+    st.subheader("Summary results")
+    st.dataframe(summarise_results(tidy).round(2), width="stretch")
+    st.subheader("Histogram of replications")
+    wide = tidy_to_wide_format(tidy)
+    st.plotly_chart(create_user_filtered_hist(wide), width="stretch")
+    with st.expander("Detailed replication data"):
+        st.dataframe(wide, width="stretch")
