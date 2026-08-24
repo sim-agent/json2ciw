@@ -190,25 +190,28 @@ class CiwConverter:
         # 5. Build a Shared Routing Matrix
         # Routing is currently class-agnostic in the schema, so each
         # customer class gets the same routing matrix.
-        shared_routing = [[0.0] * n_nodes for _ in range(n_nodes)]
 
-        for t in self.model.transitions:
-            # We only care about transitions between internal nodes.
-            # Transitions to "Exit" are implicit in Ciw
-            # (1.0 - sum(row)).
-            if t.target != "Exit":
-                # Validate that nodes exist (Pydantic validates types,
-                # but not logic across lists).
-                if t.source not in node_map or t.target not in node_map:
-                    msg = (
-                        "Transition references unknown node: "
-                        f"{t.source} -> {t.target}"
-                    )
-                    raise ValueError(msg)
+        # REMOVED BY TM in v0.12.0 to as we have multi-class support in schema
+        
+        # shared_routing = [[0.0] * n_nodes for _ in range(n_nodes)]
 
-                u_idx = node_map[t.source]
-                v_idx = node_map[t.target]
-                shared_routing[u_idx][v_idx] = t.probability
+        # for t in self.model.transitions:
+        #     # We only care about transitions between internal nodes.
+        #     # Transitions to "Exit" are implicit in Ciw
+        #     # (1.0 - sum(row)).
+        #     if t.target != "Exit":
+        #         # Validate that nodes exist (Pydantic validates types,
+        #         # but not logic across lists).
+        #         if t.source not in node_map or t.target not in node_map:
+        #             msg = (
+        #                 "Transition references unknown node: "
+        #                 f"{t.source} -> {t.target}"
+        #             )
+        #             raise ValueError(msg)
+
+        #         u_idx = node_map[t.source]
+        #         v_idx = node_map[t.target]
+        #         shared_routing[u_idx][v_idx] = t.probability
 
         # 6. Initialize Class-Keyed Ciw Arguments
         arrival_distributions = {}
@@ -227,8 +230,37 @@ class CiwConverter:
             arrival_distributions[class_name] = []
             service_distributions[class_name] = []
 
-            # Give every class the same routing matrix for now.
-            routing[class_name] = [row[:] for row in shared_routing]
+            # Build an independent routing matrix for this customer class.
+            # Scalar probabilities apply to every class; class-specific
+            # probability maps are resolved for this class.
+            routing[class_name] = [[0.0] * n_nodes for _ in range(n_nodes)]
+
+            for transition in self.model.transitions:
+                # Ciw infers an Exit probability as one minus the sum of
+                # the row's internal-node probabilities, so Exit is omitted
+                # from the explicit routing matrix.
+                if transition.target == "Exit":
+                    continue
+
+                if (
+                    transition.source not in node_map
+                    or transition.target not in node_map
+                ):
+                    msg = (
+                        "Transition references unknown node: "
+                        f"{transition.source} -> {transition.target}"
+                    )
+                    raise ValueError(msg)
+
+                source_index = node_map[transition.source]
+                target_index = node_map[transition.target]
+
+                routing[class_name][source_index][target_index] = (
+                    self.model._resolve_probability_spec(
+                        transition.probability,
+                        customer_class=class_name,
+                    )
+                )
 
             if has_reneging:
                 reneging_time_distributions[class_name] = []
