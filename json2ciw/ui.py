@@ -11,7 +11,8 @@ from .results import (
     create_user_filtered_hist, 
     summarise_results, 
     summarise_results_by_class,
-    tidy_to_wide_format
+    tidy_to_wide_format,
+    tidy_to_wide_format_by_class
 )
 from .schema import ProcessModel
 
@@ -456,6 +457,26 @@ def render_simulation_app(
             st.exception(error)
             return
 
+    # convert overall to wide format of replications
+    wide = tidy_to_wide_format(tidy)
+
+    # needed if multi-class model
+    class_wide: pd.DataFrame | None = None
+
+    if run_model.customer_classes:
+        class_label_map = {
+            customer_class.name: (
+                customer_class.label or customer_class.name
+            )
+            for customer_class in run_model.customer_classes
+        }
+
+        class_wide = tidy_to_wide_format_by_class(
+            tidy,
+            include_overall=False,
+            class_label_map=class_label_map,
+        )
+
     # st.success("Simulation complete.")
     # st.subheader("Summary results")
     # st.dataframe(summarise_results(tidy).round(2), width="stretch")
@@ -522,11 +543,24 @@ def render_simulation_app(
     with histogram_tab:
         st.subheader("Histogram of replications")
         wide = tidy_to_wide_format(tidy)
+
+
+
         st.plotly_chart(
             create_user_filtered_hist(wide),
             width="stretch",
         )
 
     with detail_tab:
-        st.subheader("Detailed replication data")
-        st.dataframe(wide, width="stretch")
+
+        if is_multiclass:
+            title_text = "Replication data - aggregate"
+        else:
+            title_text = "Replication data"
+
+        with st.expander(title_text):
+            st.dataframe(wide, width="stretch")
+
+        if class_wide is not None:
+            with st.expander("Replication data by class"):
+                st.dataframe(class_wide, width="stretch")
