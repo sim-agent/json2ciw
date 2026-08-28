@@ -7,7 +7,12 @@ import pandas as pd
 import streamlit as st
 
 from .engine import multiple_replications
-from .results import create_user_filtered_hist, summarise_results, tidy_to_wide_format
+from .results import (
+    create_user_filtered_hist, 
+    summarise_results, 
+    summarise_results_by_class,
+    tidy_to_wide_format
+)
 from .schema import ProcessModel
 
 
@@ -451,11 +456,77 @@ def render_simulation_app(
             st.exception(error)
             return
 
+    # st.success("Simulation complete.")
+    # st.subheader("Summary results")
+    # st.dataframe(summarise_results(tidy).round(2), width="stretch")
+    # st.subheader("Histogram of replications")
+    # wide = tidy_to_wide_format(tidy)
+    # st.plotly_chart(create_user_filtered_hist(wide), width="stretch")
+    # with st.expander("Detailed replication data"):
+    #     st.dataframe(wide, width="stretch")
     st.success("Simulation complete.")
-    st.subheader("Summary results")
-    st.dataframe(summarise_results(tidy).round(2), width="stretch")
-    st.subheader("Histogram of replications")
-    wide = tidy_to_wide_format(tidy)
-    st.plotly_chart(create_user_filtered_hist(wide), width="stretch")
-    with st.expander("Detailed replication data"):
+
+    is_multiclass = bool(run_model.customer_classes)
+
+    if is_multiclass:
+        overall_tab, by_class_tab, histogram_tab, detail_tab = st.tabs(
+            [
+                "Overall summary",
+                "By customer class",
+                "Replication distribution",
+                "Detailed data",
+            ]
+        )
+    else:
+        overall_tab, histogram_tab, detail_tab = st.tabs(
+            [
+                "Overall summary",
+                "Replication distribution",
+                "Detailed data",
+            ]
+        )
+
+    with overall_tab:
+        st.subheader("Overall summary")
+        overall_summary = summarise_results(tidy).round(2)
+        st.dataframe(overall_summary, width="stretch")
+
+    if is_multiclass:
+        class_label_map = {
+            customer_class.name: (
+                customer_class.label or customer_class.name
+            )
+            for customer_class in run_model.customer_classes
+        }
+
+        with by_class_tab:
+            st.subheader("Results by customer class")
+            st.caption(
+                "Utilisation is not shown here because it is measured at "
+                "the shared activity/resource level, not separately by "
+                "customer class."
+            )
+
+            class_summary = summarise_results_by_class(
+                tidy,
+                include_overall=False,
+                class_label_map=class_label_map,
+            ).round(2)
+
+            st.dataframe(
+                class_summary,
+                width="stretch",
+                hide_index=True,
+            )
+
+    with histogram_tab:
+        st.subheader("Histogram of replications")
+        wide = tidy_to_wide_format(tidy)
+        st.plotly_chart(
+            create_user_filtered_hist(wide),
+            width="stretch",
+        )
+
+    with detail_tab:
+        st.subheader("Detailed replication data")
         st.dataframe(wide, width="stretch")
