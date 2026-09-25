@@ -124,6 +124,11 @@ class Activity(BaseModel):
     renege_distribution : Distribution or ClassDistributionMap or None
             Reneging distribution for the activity, either shared across
             all customer classes or specified separately by customer class
+    queue_capacity: int, Optional (default = None)
+        Maximum number of customers that can wait at this activity. "
+        None means unlimited. 0 means no queueing space (Type I 
+        blocking); patients finish service upstream and are held at 
+        their source activity until a server here is free.
 
     """
     name: str
@@ -132,6 +137,16 @@ class Activity(BaseModel):
     service_distribution: DistributionSpec
     arrival_distribution: DistributionSpec | None = None
     renege_distribution: DistributionSpec | None = None
+    queue_capacity: int | None = Field(
+    default=None,
+    ge=0,
+    description=(
+        "Maximum number of customers that can wait at this activity. "
+        "None means unlimited. 0 means no queueing space (Type I "
+        "blocking); patients finish service upstream and are held at "
+        "their source activity until a server here is free."
+    ),
+)
 
 
 class Transition(BaseModel):
@@ -152,7 +167,6 @@ class Transition(BaseModel):
     source: str = Field(..., alias="from")
     target: str = Field(..., alias="to")
     probability: ProbabilitySpec
-
 
 class ProcessModel(BaseModel):
     """Define a validated queueing network process model.
@@ -657,13 +671,45 @@ class ProcessModel(BaseModel):
                     lines.append(f'    {arrival_id}("{arr_label}")')
 
         # --- Activity nodes ---
+        # for activity in self.activities:
+        #     node_id = make_node_id(activity.name)
+        #     dist_info = self._summarise_distribution_spec(
+        #         activity.service_distribution, context="service"
+        #     )
+        #     label = f"{activity.name}</br>{dist_info}"
+        #     lines.append(f'    {node_id}["{label}"]')
+        # --- Activity nodes v0.12.0 handles queue capacities---
+        blocking_ids: list[str] = []
         for activity in self.activities:
             node_id = make_node_id(activity.name)
             dist_info = self._summarise_distribution_spec(
                 activity.service_distribution, context="service"
             )
             label = f"{activity.name}</br>{dist_info}"
+
+            if activity.queue_capacity == 0:
+                label += "</br>No queue (blocking)"
+                blocking_ids.append(node_id)
+            elif activity.queue_capacity is not None:
+                label += f"</br>Queue capacity: {activity.queue_capacity}"
+
             lines.append(f'    {node_id}["{label}"]')
+
+        # Colour blocking activities red. Only emitted when at least one
+        # exists, so models without capacities render unchanged.
+        if blocking_ids:
+            lines.append(
+                "    classDef blocking fill:#ffcccc,stroke:#cc0000,"
+                "stroke-width:2px,color:#000"
+            )
+            lines.append(f"    class {','.join(blocking_ids)} blocking")
+
+        if blocking_ids:
+            lines.append(
+                "    classDef blocking fill:#ffcccc,stroke:#cc0000,"
+                "stroke-width:2px,color:#000"
+            )
+            lines.append(f"    class {','.join(blocking_ids)} blocking")
 
         # --- Renege nodes ---
         for activity in self.activities:
@@ -719,6 +765,10 @@ class ProcessModel(BaseModel):
                 lines.append(f"    {node_id} -.-> {renege_id}")
 
         # --- Edges: transitions ---
+        # updated in v0.12.0 to include dotted for edges with blocking... 
+        blocking_names = {
+            a.name for a in self.activities if a.queue_capacity == 0
+        }
         for transition in self.transitions:
             source_id = make_node_id(transition.source)
             target_id = (
@@ -726,17 +776,22 @@ class ProcessModel(BaseModel):
                 if transition.target != "Exit"
                 else "Exit"
             )
-
             probability_label = self._format_probability_spec(
                 transition.probability
             )
+            is_blocking = (
+                transition.target != "Exit"
+                and transition.target in blocking_names
+            )
 
-            if probability_label is None:
-                lines.append(f" {source_id} --> {target_id}")
+            if is_blocking and probability_label is None:
+                lines.append(f"    {source_id} ==> {target_id}")
+            elif is_blocking:
+                lines.append(f"    {source_id} ==>|{probability_label}| {target_id}")
+            elif probability_label is None:
+                lines.append(f"    {source_id} --> {target_id}")
             else:
-                lines.append(
-                    f" {source_id} -->|{probability_label}| {target_id}"
-                )
+                lines.append(f"    {source_id} -->|{probability_label}| {target_id}")
 
         #lines.append("```")
         return "\n".join(lines)
