@@ -93,6 +93,7 @@
     {
       "name": "Rehab Unit",
       "type": "activity",
+      "queue_capacity": 0,
       "resource": {
         "name": "Rehab beds",
         "capacity": 8
@@ -144,6 +145,7 @@
           "severe_stroke": 0.9
         }
       }
+    
     },
     {
       "from": "Acute Stroke Unit",
