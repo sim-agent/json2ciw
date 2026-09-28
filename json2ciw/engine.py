@@ -75,6 +75,7 @@ class CiwConverter:
         service_distributions = []
         arrival_distributions = []
         reneging_time_distributions = []
+        queue_capacities = []
 
         # 3. Track Whether Reneging Is Used Anywhere
         # If reneging is unused throughout the model, omit the Ciw
@@ -114,6 +115,7 @@ class CiwConverter:
                 else:
                     reneging_time_distributions.append(None)
 
+
         # 5. Build Routing Matrix (Process Flow -> Probability Matrix)
         # Initialize an N x N matrix with 0.0.
         routing = [[0.0] * n_nodes for _ in range(n_nodes)]
@@ -151,6 +153,16 @@ class CiwConverter:
                 reneging_time_distributions
             )
 
+        # 7. Queue capacities
+        queue_capacities = [
+            act.queue_capacity if act.queue_capacity is not None else math.inf
+            for act in self.model.activities
+        ]
+
+        # only add if if scalar value included.
+        if min(queue_capacities) < math.inf:
+            params["queue_capacities"] = queue_capacities
+
         return params
 
     def _generate_multiclass_params(self) -> dict[str, Any]:
@@ -187,32 +199,12 @@ class CiwConverter:
             act.resource.capacity for act in self.model.activities
         ]
 
-        # 5. Build a Shared Routing Matrix
-        # Routing is currently class-agnostic in the schema, so each
-        # customer class gets the same routing matrix.
-
-        # REMOVED BY TM in v0.12.0 to as we have multi-class support in schema
+        # 5. Track if queue capacities are used otherwise infinite.
+        queue_capacities = [
+            act.queue_capacity if act.queue_capacity is not None else math.inf
+            for act in self.model.activities
+        ]
         
-        # shared_routing = [[0.0] * n_nodes for _ in range(n_nodes)]
-
-        # for t in self.model.transitions:
-        #     # We only care about transitions between internal nodes.
-        #     # Transitions to "Exit" are implicit in Ciw
-        #     # (1.0 - sum(row)).
-        #     if t.target != "Exit":
-        #         # Validate that nodes exist (Pydantic validates types,
-        #         # but not logic across lists).
-        #         if t.source not in node_map or t.target not in node_map:
-        #             msg = (
-        #                 "Transition references unknown node: "
-        #                 f"{t.source} -> {t.target}"
-        #             )
-        #             raise ValueError(msg)
-
-        #         u_idx = node_map[t.source]
-        #         v_idx = node_map[t.target]
-        #         shared_routing[u_idx][v_idx] = t.probability
-
         # 6. Initialize Class-Keyed Ciw Arguments
         arrival_distributions = {}
         service_distributions = {}
@@ -331,7 +323,13 @@ class CiwConverter:
                 reneging_time_distributions
             )
 
+        # 9. Add queue capacities only if it is used.
+        if min(queue_capacities) < math.inf:
+            params["queue_capacities"] = queue_capacities
+
         return params
+
+    
 
     def _resolve_distribution_spec(
         self,
