@@ -15,6 +15,167 @@ DEFAULT_METRICS = {
     "mean_wait_all": "Mean wait (all customers)",
 }
 
+DEFAULT_TRANSFER_METRICS = {
+    "mean_n_transfers": "Mean transfers",
+    "mean_n_blocked": "Mean blocked transfers",
+    "mean_blocking_probability": "Mean blocking probability",
+    "mean_blocking_delay": "Mean blocking delay",
+    "mean_blocking_delay_given_blocked": (
+        "Mean blocking delay (given blocked)"
+    ),
+}
+
+
+def summarise_transfer_results(
+    df_transfer_reps: pd.DataFrame,
+    metric_name_map: dict[str, str] | None = None,
+    *,
+    include_customer_class: bool = False,
+    class_label_map: dict[str, str] | None = None,
+) -> pd.DataFrame:
+    """Summarise replication-level transfer blocking results.
+
+
+    Parameters
+    ----------
+    df_transfer_reps : pandas.DataFrame
+        Tidy-format source-to-destination transfer results returned by
+        `multiple_replications()`.
+    metric_name_map : dict or None, optional
+        Dictionary mapping internal metric names to friendly names.
+        If None, default friendly names are used. Pass an empty dictionary
+        to keep internal names.
+    include_customer_class : bool, default False
+        Whether to include customer-class-specific rows. By default, only
+        overall transfer results are summarised.
+    class_label_map : dict or None, optional
+        Optional mapping from internal customer class names to friendly
+        display labels.
+
+
+    Returns
+    -------
+    pandas.DataFrame
+        Summary table with one row per source-to-destination transfer,
+        and one column per summary metric.
+
+
+    """
+    if metric_name_map is None:
+        metric_name_map = DEFAULT_TRANSFER_METRICS
+
+
+    # A model without finite queue capacities produces an empty but
+    # correctly structured transfer-results DataFrame.
+    if df_transfer_reps.empty:
+        return pd.DataFrame(
+            columns=[
+                "Source activity",
+                "Destination activity",
+                "Mean transfers",
+                "Mean blocked transfers",
+                "Mean blocking probability",
+                "Mean blocking delay",
+                "Mean blocking delay (given blocked)",
+            ]
+        )
+
+
+    df_summary = df_transfer_reps.copy()
+
+
+    # Keep the default summary focused on all customers. Class-specific
+    # rows can be requested when the model includes customer classes.
+    if "measure_scope" in df_summary.columns:
+        if include_customer_class:
+            df_summary = df_summary[
+                df_summary["measure_scope"].isin(
+                    ["overall", "customer_class"]
+                )
+            ].copy()
+        else:
+            df_summary = df_summary[
+                df_summary["measure_scope"] == "overall"
+            ].copy()
+
+
+    # Create a display label only when a class-level breakdown is wanted.
+    if include_customer_class:
+        if "customer_class" not in df_summary.columns:
+            df_summary["customer_class"] = "All"
+
+
+        if class_label_map:
+            df_summary["Customer Class"] = (
+                df_summary["customer_class"]
+                .map(class_label_map)
+                .fillna(df_summary["customer_class"])
+            )
+        else:
+            df_summary["Customer Class"] = df_summary["customer_class"]
+
+
+        if "measure_scope" in df_summary.columns:
+            overall_mask = df_summary["measure_scope"] == "overall"
+            df_summary.loc[overall_mask, "Customer Class"] = "Overall"
+
+
+    # These are replication-level quantities, so take their mean over
+    # replications, matching the existing node-level summary functions.
+    agg_spec = {
+        "mean_n_transfers": ("n_transfers", "mean"),
+        "mean_n_blocked": ("n_blocked", "mean"),
+        "mean_blocking_probability": (
+            "blocking_probability",
+            "mean",
+        ),
+        "mean_blocking_delay": (
+            "mean_blocking_delay",
+            "mean",
+        ),
+        "mean_blocking_delay_given_blocked": (
+            "mean_blocking_delay_given_blocked",
+            "mean",
+        ),
+    }
+
+
+    group_cols = [
+        "source_activity_name",
+        "destination_activity_name",
+    ]
+
+    if include_customer_class:
+        group_cols.append("Customer Class")
+
+
+    summary = (
+        df_summary.groupby(group_cols)
+        .agg(**agg_spec)
+        .reset_index()
+    )
+
+
+    summary = summary.rename(
+        columns={
+            "source_activity_name": "Source activity",
+            "destination_activity_name": "Destination activity",
+        }
+    )
+
+
+    # Apply friendly metric labels to columns if requested.
+    if metric_name_map:
+        rename_map = {
+            internal: friendly
+            for internal, friendly in metric_name_map.items()
+            if internal in summary.columns
+        }
+        summary = summary.rename(columns=rename_map)
+
+
+    return summary
+
 
 def summarise_results(
     df_reps: pd.DataFrame,
