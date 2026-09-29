@@ -478,7 +478,7 @@ def multiple_replications(
     runtime: float = 1000.0,
     warmup: float = 0.0,
     n_jobs: int = -1,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Run multiple simulation replications and collect node metrics.
 
     Parameters
@@ -498,12 +498,22 @@ def multiple_replications(
 
     Returns
     -------
-    pandas.DataFrame
-        Tidy-format replication results with one overall row per node
-        per replication, plus one row per customer class per node per
-        replication when customer classes are defined.
+    tuple of pandas.DataFrame
+        A tuple containing:
+
+        - Node-level replication results
+        - Source-to-destination transfer blocking results
+
+        The transfer blocking DataFrame is empty when no queue capacities
+        are configured in the process model.
 
     """
+
+    has_queue_capacities = any(
+        activity.queue_capacity is not None
+        for activity in process_model.activities
+    )
+
     # Build a mapping from node_id (1-indexed) to activity/resource info
     node_metadata = {}
     for idx, activity in enumerate(process_model.activities):
@@ -513,6 +523,8 @@ def multiple_replications(
             "resource_name": activity.resource.name,
             "resource_capacity": activity.resource.capacity,
             "has_reneging": activity.renege_distribution is not None,
+            "queue_capacity": activity.queue_capacity,
+            "has_queue_capacities": has_queue_capacities,
         }
 
     # Extract customer class names from the model.
@@ -528,6 +540,7 @@ def multiple_replications(
             network=network,
             node_metadata=node_metadata,
             customer_classes=customer_classes,
+            has_queue_capacities=has_queue_capacities,
             rep=rep,
             warmup=warmup,
             runtime=runtime,
@@ -535,10 +548,45 @@ def multiple_replications(
         for rep in range(num_reps)
     )
 
-    # Flatten list-of-lists of row dicts
-    records = [row for rep_rows in results for row in rep_rows]
+    # NEW: Each replication returns a tuple:
+    # (node_rows, transfer_blocking_rows).
+    node_records = [
+        row
+        for rep_node_rows, _ in results
+        for row in rep_node_rows
+    ]
 
-    return pd.DataFrame.from_records(records)
+    transfer_records = [
+        row
+        for _, rep_transfer_rows in results
+        for row in rep_transfer_rows
+    ]
+
+    node_results = pd.DataFrame.from_records(node_records)
+
+    # Defining columns explicitly means that models with no queue
+    # capacities return an empty but correctly structured DataFrame.
+    transfer_result_columns = [
+        "rep",
+        "measure_scope",
+        "customer_class",
+        "source_node_id",
+        "source_activity_name",
+        "destination_node_id",
+        "destination_activity_name",
+        "n_transfers",
+        "n_blocked",
+        "blocking_probability",
+        "mean_blocking_delay",
+        "mean_blocking_delay_given_blocked",
+    ]
+
+    transfer_results = pd.DataFrame.from_records(
+        transfer_records,
+        columns=transfer_result_columns,
+    )
+
+    return node_results, transfer_results
 
 
 def _build_result_row(
@@ -584,6 +632,8 @@ def _build_result_row(
     renege_waits = [r.waiting_time for r in renege_recs]
     all_waits = [r.waiting_time for r in recs_subset]
     service_times = [r.service_time for r in service_recs]
+
+    blocked_time = [r.time_blocked for r in service_recs]
 
     n_service = len(service_recs)
     n_renege = len(renege_recs)
@@ -640,8 +690,309 @@ def _build_result_row(
 
     return row
 
+def _build_transfer_blocking_rows(
+    service_recs: list[Any],
+    rep: int,
+    source_node_id: int,
+    node_metadata: dict[int, dict[str, Any]],
+    measure_scope: str,
+    customer_class: str | None = None,
+) -> list[dict[str, Any]]:
+    """Summarise blocking by source-to-destination transfer.
+
+    One row is returned for each downstream node actually reached by
+    customers completing service at the source node.
+
+    Parameters
+    ----------
+    service_recs : list of Any
+        Service records for one source node and one measurement scope.
+    rep : int
+        Replication index.
+    source_node_id : int
+        Identifier of the source node where service was completed.
+    node_metadata : dict of int to dict of str to Any
+        Mapping from node identifiers to node metadata.
+    measure_scope : str
+        Scope of the summary, typically `"overall"` or `"customer_class"`.
+    customer_class : str or None, optional
+        Customer class name for class-specific summaries, by default `None`.
+
+    Returns
+    -------
+    list of dict of str to Any
+        One transfer-blocking result row per source-to-destination pair.
+
+    Notes:
+    ------
+    TM added v0.12.0
+
+    """
+    # Customers with destination -1 leave the system. They cannot be
+    # blocked on a transfer to a downstream internal node, so exclude them.
+    internal_transfer_recs = [
+        r for r in service_recs if r.destination != -1
+    ]
+
+    # Identify the internal downstream nodes reached by at least one
+    # completed service record in this replication and scope.
+    destination_node_ids = sorted(
+        {r.destination for r in internal_transfer_recs}
+    )
+
+    source_meta = node_metadata.get(source_node_id, {})
+    rows = []
+
+    for destination_node_id in destination_node_ids:
+        # Records for one directed source -> destination transfer.
+        transfer_recs = [
+            r
+            for r in internal_transfer_recs
+            if r.destination == destination_node_id
+        ]
+
+        # A positive time_blocked value means the customer completed service
+        # at the source but could not transfer immediately because the
+        # receiving node had no available queue capacity.
+        blocked_recs = [
+            r for r in transfer_recs if r.time_blocked > 0
+        ]
+
+        n_transfers = len(transfer_recs)
+        n_blocked = len(blocked_recs)
+
+        # Unblocked transfers contribute zero delay. Summing only positive
+        # times is therefore equivalent to summing all transfer blocking
+        # times, while also avoiding any non-finite values defensively.
+        total_blocking_delay = sum(
+            r.time_blocked for r in blocked_recs
+        )
+
+        # Average blocking delay across every customer attempting this
+        # particular transfer. Customers transferred immediately contribute
+        # zero to this mean.
+        mean_blocking_delay = (
+            total_blocking_delay / n_transfers
+            if n_transfers > 0
+            else 0.0
+        )
+
+        # Average delay only among customers whose transfer was blocked.
+        mean_blocking_delay_given_blocked = (
+            total_blocking_delay / n_blocked
+            if n_blocked > 0
+            else 0.0
+        )
+
+        # Probability that a customer needing this specific transfer could
+        # not move immediately to the downstream node.
+        blocking_probability = (
+            n_blocked / n_transfers
+            if n_transfers > 0
+            else 0.0
+        )
+
+        destination_meta = node_metadata.get(destination_node_id, {})
+
+        rows.append(
+            {
+                "rep": rep,
+                "measure_scope": measure_scope,
+                "customer_class": (
+                    customer_class
+                    if customer_class is not None
+                    else "All"
+                ),
+                "source_node_id": source_node_id,
+                "source_activity_name": source_meta.get(
+                    "activity_name",
+                    f"Node {source_node_id}",
+                ),
+                "destination_node_id": destination_node_id,
+                "destination_activity_name": destination_meta.get(
+                    "activity_name",
+                    f"Node {destination_node_id}",
+                ),
+                "n_transfers": n_transfers,
+                "n_blocked": n_blocked,
+                "blocking_probability": blocking_probability,
+                "mean_blocking_delay": mean_blocking_delay,
+                "mean_blocking_delay_given_blocked": (
+                    mean_blocking_delay_given_blocked
+                ),
+            }
+        )
+
+    return rows
+
 
 def _single_run(
+    network: ciw.Network,
+    node_metadata: dict[int, dict[str, Any]],
+    customer_classes: list[str] | None = None,
+    has_queue_capacities: bool = False,
+    rep: int = 0,
+    warmup: float = 0.0,
+    runtime: float = 1000.0,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Run a single simulation replication and aggregate node metrics.
+
+
+    Parameters
+    ----------
+    network : ciw.Network
+        Configured Ciw network.
+    node_metadata : dict of int to dict of str to Any
+        Mapping from node identifiers to metadata.
+    customer_classes : list of str or None, optional
+        Customer class names defined in the model. If empty or `None`,
+        only overall node summaries are returned.
+    has_queue_capacities : bool, optional
+        Whether at least one activity in the model has a finite queue
+        capacity. When `True`, source-to-destination blocking results are
+        also calculated, by default `False`.
+    rep : int, optional
+        Replication index and random seed, by default 0.
+    warmup : float, optional
+        Warmup period to exclude, by default 0.0.
+    runtime : float, optional
+        Simulation time horizon, by default 1000.0.
+
+
+    Returns
+    -------
+    tuple of list of dict
+        Tidy-format node-level result rows and transfer-level blocking
+        result rows for the replication.
+
+
+    Notes
+    -----
+    The Ciw random number generators are seeded via `ciw.seed(rep)` to
+    ensure reproducibility of each replication. Warmup filtering is applied
+    using the arrival times of customer records.
+
+
+    """
+    ciw.seed(rep)
+    sim = ciw.Simulation(network)
+    sim.simulate_until_max_time(runtime)
+
+
+    # Pull service, reneging and arrival rejection records, since those are the
+    # outcomes used by the current summary functions.
+    # TM note: in ciw rejection records are produced when an arrival finds a node's queue at capacity.
+    recs = sim.get_all_records(only=["service", "renege", "rejection"])
+
+    # Warmup filter
+    # TM note - is there a better way to do this in ciw?
+    if warmup > 0:
+        recs = [r for r in recs if r.arrival_date >= warmup]
+
+
+    # ADDED v0.12.0: node-level and transfer-level results 
+    # transfer results are used for blocking metrics 
+    node_rows = []
+    transfer_rows = []
+
+    horizon = runtime - warmup
+    customer_classes = customer_classes or []
+
+    for node in sim.transitive_nodes:
+        node_id = node.id_number
+        meta = node_metadata.get(node_id, {}).copy()
+
+        # Node-level utilisation comes directly from Ciw and should be
+        # attached to the overall row only.
+        meta["utilisation"] = node.server_utilisation * 100
+
+        # First collect all records for this node.
+        node_recs = [r for r in recs if r.node == node_id]
+
+        # Always append the overall node summary.
+        node_rows.append(
+            _build_result_row(
+                recs_subset=node_recs,
+                rep=rep,
+                node_id=node_id,
+                meta=meta,
+                horizon=horizon,
+                measure_scope="overall",
+                customer_class=None,
+            )
+        )
+
+        # ADDED v0.12.0: If model has queue capacities
+        # then calculate rejection and blocking metrics.
+        if has_queue_capacities:
+            service_recs = [
+                r
+                for r in node_recs
+                if r.record_type == "service"
+            ]
+
+            transfer_rows.extend(
+                _build_transfer_blocking_rows(
+                    service_recs=service_recs,
+                    rep=rep,
+                    source_node_id=node_id,
+                    node_metadata=node_metadata,
+                    measure_scope="overall",
+                    customer_class=None,
+                )
+            )
+
+
+        # If customer classes are defined, also append one row per class.
+        # This includes zero rows for classes that never visit a node,
+        # which is useful for validating routing and service structure.
+        for class_name in customer_classes:
+            class_recs = [
+                r for r in node_recs if r.customer_class == class_name
+            ]
+
+
+            node_rows.append(
+                _build_result_row(
+                    recs_subset=class_recs,
+                    rep=rep,
+                    node_id=node_id,
+                    meta=meta,
+                    horizon=horizon,
+                    measure_scope="customer_class",
+                    customer_class=class_name,
+                )
+            )
+
+
+            # NEW: Add the equivalent source-to-destination breakdown for
+            # this customer class. This uses only class-specific service
+            # records because blocking occurs after service completion.
+            if has_queue_capacities:
+                class_service_recs = [
+                    r
+                    for r in class_recs
+                    if r.record_type == "service"
+                ]
+
+                transfer_rows.extend(
+                    _build_transfer_blocking_rows(
+                        service_recs=class_service_recs,
+                        rep=rep,
+                        source_node_id=node_id,
+                        node_metadata=node_metadata,
+                        measure_scope="customer_class",
+                        customer_class=class_name,
+                    )
+                )
+
+
+    # CHANGED v0.12.0: Return both result types. multiple_replications will flatten
+    # these independently into node_results and transfer_results DataFrames.
+    return node_rows, transfer_rows
+
+
+def _single_run_old(
     network: ciw.Network,
     node_metadata: dict[int, dict[str, Any]],
     customer_classes: list[str] | None = None,
@@ -683,11 +1034,13 @@ def _single_run(
     sim = ciw.Simulation(network)
     sim.simulate_until_max_time(runtime)
 
-    # Pull only service and reneging records, since those are the
+    # Pull service, reneging and arrival rejection records, since those are the
     # outcomes used by the current summary functions.
-    recs = sim.get_all_records(only=["service", "renege"])
+    # TM note: in ciw rejection records are produced when an arrival finds a node's queue at capacity.
+    recs = sim.get_all_records(only=["service", "renege", "rejection"])
 
     # Warmup filter
+    # TM note - is there a better way to do this in ciw?
     if warmup > 0:
         recs = [r for r in recs if r.arrival_date >= warmup]
 
