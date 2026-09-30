@@ -639,3 +639,114 @@ def create_user_filtered_hist(results: pd.DataFrame) -> go.Figure:
     )
 
     return fig
+
+
+def tidy_transfer_to_wide_format(
+    df_transfer_reps: pd.DataFrame,
+    *,
+    include_customer_class: bool = False,
+    class_label_map: dict[str, str] | None = None,
+) -> pd.DataFrame:
+    """Convert tidy transfer blocking results to wide format.
+
+    Parameters
+    ----------
+    df_transfer_reps : pandas.DataFrame
+        Tidy-format source-to-destination transfer results returned by
+        `multiple_replications()`.
+    include_customer_class : bool, default False
+        Whether to include class-specific results alongside overall
+        results. By default, only overall results are included.
+    class_label_map : dict or None, optional
+        Optional mapping from internal customer class names to friendly
+        display labels.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Wide-format transfer results with one row per replication.
+        Columns use the format "metric [source -> destination]".
+        When customer classes are included, labels also include the class.
+        The replication identifier is retained as the index.
+
+    """
+    df_wide = df_transfer_reps.copy()
+
+    # Keep all replication identifiers present in the input, even if
+    # scope filtering leaves a replication with no transfer rows.
+    rep_index = pd.Index(
+        sorted(df_wide["rep"].unique()),
+        name="rep",
+    )
+
+    # Default to overall transfer results. Optionally include the
+    # customer-class breakdown alongside the overall rows.
+    if "measure_scope" in df_wide.columns:
+        scopes = (
+            ["overall", "customer_class"]
+            if include_customer_class
+            else ["overall"]
+        )
+        df_wide = df_wide[
+            df_wide["measure_scope"].isin(scopes)
+        ].copy()
+
+    # Models without finite queue capacities return empty transfer
+    # results. Also handle inputs emptied by the scope filter.
+    if df_wide.empty:
+        return pd.DataFrame(index=rep_index)
+
+    # Identify each directed transfer using its source and destination.
+    df_wide["transfer"] = (
+        df_wide["source_activity_name"]
+        + " -> "
+        + df_wide["destination_activity_name"]
+    )
+
+    # Add customer-class labels only when a breakdown is requested.
+    if include_customer_class:
+        if "customer_class" not in df_wide.columns:
+            df_wide["customer_class"] = "All"
+
+        if class_label_map:
+            class_display = (
+                df_wide["customer_class"]
+                .map(class_label_map)
+                .fillna(df_wide["customer_class"])
+            )
+        else:
+            class_display = df_wide["customer_class"].copy()
+
+        # Explicitly distinguish overall rows from class-specific rows.
+        if "measure_scope" in df_wide.columns:
+            overall_mask = df_wide["measure_scope"] == "overall"
+            class_display.loc[overall_mask] = "Overall"
+
+        df_wide["transfer"] = (
+            df_wide["transfer"] + " - " + class_display
+        )
+
+    metric_cols = [
+        "n_transfers",
+        "n_blocked",
+        "blocking_probability",
+        "mean_blocking_delay",
+        "mean_blocking_delay_given_blocked",
+    ]
+
+    # Reshape without aggregating: duplicate replication/transfer labels
+    # indicate an input or display-label collision and should raise.
+    # Missing values remain missing rather than being replaced with zero.
+    wide = df_wide.pivot(
+        index="rep",
+        columns="transfer",
+        values=metric_cols,
+    )
+
+    # Match the flat column naming convention of the node-level helpers.
+    wide.columns = [
+        f"{metric} [{transfer}]"
+        for metric, transfer in wide.columns
+    ]
+
+    return wide.reindex(rep_index)
