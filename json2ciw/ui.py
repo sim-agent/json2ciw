@@ -525,7 +525,7 @@ def render_simulation_app(
             network = ciw.create_network(**updated_params)
 
             # CHANGED v1.0.0 TM - multiple reps now returns a tuple
-            tidy, transfer_tidy = multiple_replications(
+            tidy, tidy_transfer = multiple_replications(
                 network, run_model, 
                 warmup=float(warmup),
                 num_reps=int(num_reps), 
@@ -537,6 +537,9 @@ def render_simulation_app(
 
     # convert overall to wide format of replications
     wide = tidy_to_wide_format(tidy)
+
+    # Added v1.0.0 
+    wide_transfer = tidy_transfer_to_wide_format(tidy_transfer)
 
     # needed if multi-class model
     class_wide: pd.DataFrame | None = None
@@ -642,3 +645,7 @@ def render_simulation_app(
         if class_wide is not None:
             with st.expander("Replication data by class"):
                 st.dataframe(class_wide, width="stretch")
+
+        if wide_transfer is not None:
+            with st.expander("Replication data - blocking"):
+                st.dataframe(wide_transfer, width='stretch')
