@@ -14,7 +14,9 @@ from .results import (
     summarise_results, 
     summarise_results_by_class,
     tidy_to_wide_format,
-    tidy_to_wide_format_by_class
+    tidy_to_wide_format_by_class,
+    summarise_transfer_results,
+    tidy_transfer_to_wide_format,
 )
 from .schema import ProcessModel
 
@@ -363,6 +365,7 @@ def _render_node_controls(
 def _model_for_results(
     process_model: ProcessModel,
     number_of_servers: list[int],
+    queue_capacities: list[int | float],
 ) -> ProcessModel:
     """Copy result metadata and apply edited resource capacities.
 
@@ -372,16 +375,41 @@ def _model_for_results(
         Original validated model.
     number_of_servers : list of int
         User-selected capacities in activity order.
+    queue_capacities: list of int or float (for inf)
+        User-selected queue capacities for nodes.
 
     Returns
     -------
     ProcessModel
         Deep copy of the model whose resource capacities match the Ciw network
         being run. This ensures result tables display the used capacities.
+
+    Notes:
+    ------
+
+    ## v1.0.0 
+
+    ### CHANGED
+
+    - parameter added: queue_capacities
+    - function now processes queue capacities.
+
     """
     run_model = process_model.model_copy(deep=True)
-    for activity, capacity in zip(run_model.activities, number_of_servers, strict=True):
-        activity.resource.capacity = capacity
+
+    for activity, servers, queue_capacity in zip(
+            run_model.activities, 
+            number_of_servers, 
+            queue_capacities,
+            strict=True
+    ):
+        activity.resource.capacity = servers
+        activity.queue_capacity = (
+            None
+            if math.isinf(queue_capacity)
+            else int(queue_capacity)
+        )
+
     return run_model
 
 
@@ -485,13 +513,23 @@ def render_simulation_app(
         st.error("Correct the routing matrix before running the simulation.")
         return
 
-    run_model = _model_for_results(valid_process_model, updated_params["number_of_servers"])
+    run_model = _model_for_results(
+        valid_process_model, 
+        updated_params["number_of_servers"],
+        updated_params["queue_capacities"],
+    )
+
     with st.spinner(f"Running {num_reps} replications of {model_metadata.get('name', 'the model')}…"):
         try:
+
             network = ciw.create_network(**updated_params)
-            tidy = multiple_replications(
-                network, run_model, warmup=float(warmup),
-                num_reps=int(num_reps), runtime=float(runtime),
+
+            # CHANGED v1.0.0 TM - multiple reps now returns a tuple
+            tidy, transfer_tidy = multiple_replications(
+                network, run_model, 
+                warmup=float(warmup),
+                num_reps=int(num_reps), 
+                runtime=float(runtime),
             )
         except Exception as error:
             st.exception(error)
