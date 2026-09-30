@@ -570,6 +570,12 @@ def render_simulation_app(
 
     is_multiclass = bool(run_model.customer_classes)
 
+    # Added v1.0.0 check for any finite queues
+    has_finite_queue = any(
+        activity.queue_capacity is not None
+        for activity in run_model.activities
+    )
+
     if is_multiclass:
         overall_tab, by_class_tab, histogram_tab, detail_tab = st.tabs(
             [
@@ -592,6 +598,11 @@ def render_simulation_app(
         st.subheader("Overall summary")
         overall_summary = summarise_results(tidy).round(2)
         st.dataframe(overall_summary, width="stretch")
+
+        if has_finite_queue:
+            blocking_summary = summarise_transfer_results(tidy_transfer).round(2)
+            st.dataframe(blocking_summary, width="stretch", hide_index=True)
+
 
     if is_multiclass:
         class_label_map = {
@@ -620,6 +631,14 @@ def render_simulation_app(
                 width="stretch",
                 hide_index=True,
             )
+
+            if has_finite_queue:
+                blocking_class_summary = summarise_transfer_results(
+                    tidy_transfer, 
+                    include_customer_class=True
+                ).round(2)
+
+                st.dataframe(blocking_class_summary, width="stretch", hide_index=True)
 
     with histogram_tab:
         st.subheader("Histogram of replications")
