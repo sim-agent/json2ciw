@@ -644,8 +644,6 @@ def render_simulation_app(
         st.subheader("Histogram of replications")
         wide = tidy_to_wide_format(tidy)
 
-
-
         st.plotly_chart(
             create_user_filtered_hist(wide),
             width="stretch",
@@ -665,6 +663,6 @@ def render_simulation_app(
             with st.expander("Replication data by class"):
                 st.dataframe(class_wide, width="stretch")
 
-        if wide_transfer is not None:
+        if not wide_transfer.empty:
             with st.expander("Replication data - blocking"):
                 st.dataframe(wide_transfer, width='stretch')
