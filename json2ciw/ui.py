@@ -2,6 +2,8 @@
 
 from typing import Any
 
+import math
+
 import ciw
 import pandas as pd
 import streamlit as st
@@ -262,6 +264,8 @@ def _render_node_controls(
     has_reneging = "reneging_time_distributions" in default_params
     updated_params: dict[str, Any] = {
         "number_of_servers": [],
+        # ADDED v1.0.0
+        "queue_capacities": [],
         "arrival_distributions": {} if is_multiclass else [],
         "service_distributions": {} if is_multiclass else [],
     }
@@ -283,6 +287,12 @@ def _render_node_controls(
     st.sidebar.header("Resources and distributions")
     st.sidebar.caption("Resources are shared. Distribution values are class-specific in multi-class models.")
 
+    # ADDED v1.0.0 get or set default (inf) queue capacities.
+    default_queue_capacities = default_params.get(
+        "queue_capacities",
+        [math.inf] * len(node_names),
+    )
+
     for index, node_name in enumerate(node_names):
         activity = activities[index] if index < len(activities) else {}
         resource_name = activity.get("resource", {}).get("name", "Servers")
@@ -292,7 +302,37 @@ def _render_node_controls(
             value=int(default_params["number_of_servers"][index]), step=1,
             key=_widget_key("servers", node_name),
         )
+
         updated_params["number_of_servers"].append(int(servers))
+
+        # ADDED v1.0.0 default queue capacities.
+        default_capacity = default_queue_capacities[index]
+        default_is_infinite = (
+            default_capacity is None or math.isinf(default_capacity)
+        )
+
+        infinite_queue = st.sidebar.checkbox(
+            "Infinite queue capacity",
+            value=default_is_infinite,
+            key=_widget_key("queue_capacity", node_name, "infinite"),
+            help="When checked, this activity has unlimited waiting space.",
+        )
+
+        if infinite_queue:
+            updated_params["queue_capacities"].append(math.inf)
+        else:
+            queue_capacity = st.sidebar.number_input(
+                "Queue capacity",
+                min_value=0,
+                value=0 if default_is_infinite else int(default_capacity),
+                step=1,
+                key=_widget_key("queue_capacity", node_name, "value"),
+                help=(
+                    "Maximum number of customers waiting, excluding those "
+                    "in service. Zero means no waiting space."
+                ),
+            )
+            updated_params["queue_capacities"].append(int(queue_capacity))       
 
         if not is_multiclass:
             for role, parameter_name, heading in distribution_roles:
