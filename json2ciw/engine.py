@@ -627,16 +627,26 @@ def _build_result_row(
     service_recs = [r for r in recs_subset if r.record_type == "service"]
     renege_recs = [r for r in recs_subset if r.record_type == "renege"]
 
+    # ADDED v1.0.0
+    rejection_recs = [r for r in recs_subset if r.record_type == "rejection"]
+
     # Extract primitive metrics from records.
     service_waits = [r.waiting_time for r in service_recs]
     renege_waits = [r.waiting_time for r in renege_recs]
-    all_waits = [r.waiting_time for r in recs_subset]
+
+    # CHANGED v1.0.0 all waits exclude rejections
+    all_waits = service_waits + renege_waits
     service_times = [r.service_time for r in service_recs]
 
     blocked_time = [r.time_blocked for r in service_recs]
 
     n_service = len(service_recs)
     n_renege = len(renege_recs)
+    
+    # ADDED v1.0.0
+    n_rejected = len(rejection_recs)
+
+    # excluded rejected arrivals
     n_total = n_service + n_renege
 
     mean_wait_service = (
@@ -665,6 +675,7 @@ def _build_result_row(
         "measure_scope": measure_scope,
         "customer_class": customer_class if customer_class is not None else "All",
         "n_service": n_service,
+        "n_rejected": n_rejected,
         "mean_wait": mean_wait_service,
         "mean_service": mean_service,
         "mean_Lq": mean_lq,
