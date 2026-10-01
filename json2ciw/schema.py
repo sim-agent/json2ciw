@@ -678,7 +678,7 @@ class ProcessModel(BaseModel):
         #     )
         #     label = f"{activity.name}</br>{dist_info}"
         #     lines.append(f'    {node_id}["{label}"]')
-        # --- Activity nodes v0.12.0 handles queue capacities---
+        # --- Activity nodes v1.0.0 handles queue capacities---
         blocking_ids: list[str] = []
         for activity in self.activities:
             node_id = make_node_id(activity.name)
@@ -765,7 +765,7 @@ class ProcessModel(BaseModel):
                 lines.append(f"    {node_id} -.-> {renege_id}")
 
         # --- Edges: transitions ---
-        # updated in v0.12.0 to include dotted for edges with blocking... 
+        # updated in v1.0.0 to include dotted for edges with blocking... 
         blocking_names = {
             a.name for a in self.activities if a.queue_capacity == 0
         }
