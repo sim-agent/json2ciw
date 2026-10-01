@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 
 DEFAULT_METRICS = {
     "mean_n_service": "Mean completed services",
+    "mean_n_rejected": "Mean rejected arrivals",
     "mean_wait": "Mean waiting time",
     "mean_service": "Mean service time",
     "mean_utilisation": "Mean utilisation",
@@ -220,6 +221,7 @@ def summarise_results(
     }
 
     optional_metrics = {
+        "mean_n_rejected": ("n_rejected", "mean"),
         "mean_n_renege": ("n_renege", "mean"),
         "mean_renege_rate": ("renege_rate", "mean"),
         "mean_wait_renege": ("mean_wait_renege", "mean"),
@@ -345,6 +347,7 @@ def summarise_results_by_class(
             agg_spec["mean_utilisation"] = ("utilisation", "mean")
 
     optional_metrics = {
+        "mean_n_rejected": ("n_rejected", "mean"),
         "mean_n_renege": ("n_renege", "mean"),
         "mean_renege_rate": ("renege_rate", "mean"),
         "mean_wait_renege": ("mean_wait_renege", "mean"),
@@ -425,11 +428,13 @@ def tidy_to_wide_format(
     ]
 
     optional_cols = [
+        "n_rejected",
         "n_renege",
         "renege_rate",
         "mean_wait_renege",
         "mean_wait_all",
     ]
+    
     metric_cols.extend([c for c in optional_cols if c in df_wide.columns])
 
     df_metrics = df_wide[["rep", "activity", *metric_cols]]
