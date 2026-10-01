@@ -725,7 +725,7 @@ def _build_transfer_blocking_rows(
 
     Notes:
     ------
-    TM added v0.12.0
+    TM added v1.0.0
 
     """
     # Customers with destination -1 leave the system. They cannot be
@@ -890,7 +890,7 @@ def _single_run(
         recs = [r for r in recs if r.arrival_date >= warmup]
 
 
-    # ADDED v0.12.0: node-level and transfer-level results 
+    # ADDED v1.0.0: node-level and transfer-level results 
     # transfer results are used for blocking metrics 
     node_rows = []
     transfer_rows = []
@@ -922,7 +922,7 @@ def _single_run(
             )
         )
 
-        # ADDED v0.12.0: If model has queue capacities
+        # ADDED v1.0.0: If model has queue capacities
         # then calculate rejection and blocking metrics.
         if has_queue_capacities:
             service_recs = [
@@ -987,7 +987,7 @@ def _single_run(
                 )
 
 
-    # CHANGED v0.12.0: Return both result types. multiple_replications will flatten
+    # CHANGED v1.0.0: Return both result types. multiple_replications will flatten
     # these independently into node_results and transfer_results DataFrames.
     return node_rows, transfer_rows
 
