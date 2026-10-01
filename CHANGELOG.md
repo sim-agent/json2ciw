@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Consistent identifier (represents all versions, resolves to latest): https://doi.org/10.5281/zenodo.18879546.
 
-## UNRELEADED (2026-07-30)
+## UNRELEADED (2026-10-01)
 
-Modified schema to support multiple customer classes i.e. multiple different types of entitiy that can have different arrival,  service and renege distributions. This also supports class based routing between activities.
+This is version 1.0.0 due to a breaking change in the multiple replications interface.
+
+Modified schema to support multiple customer classes and finite queue capacities.  The new schema supports multiple different types of entitiy that can have different arrival, service and renege distributions. This also supports class based routing between activities.  Queues can now have finite capacities to, for example, model limited physcial space.  In `ciw` this is type 1 blocking. I.e. arrivals are rejected when capacity is full and transistions between nodes are "blocked".  
 
 ### Added
 
@@ -18,12 +20,16 @@ Modified schema to support multiple customer classes i.e. multiple different typ
 * `schema.ClassProbabilityMap` for modelling class dependent routing.
 * `schema.ProbabilitySpec` that is a `TypeAlias` for `float` (when routing probabilities are aggregate) or `ClassProbabilityMap`
 
-### Updated
+### Changed
 
 * `schema.ProcessModel`, `schema.Activity`. To accomodate `DistribuitionSpec` rather than just `Distribution`. Provides backward compatibility with `0.10
 * `schema.ProcessModel.to_mermaid` handles multiple arrival, services & renege distributions. Arrivals shown as individual flows (collapsable to single) and service/renege is single flows with note that service dist is class specific. Class based routing is shown as edge label by class.  
 * `schema.get_distribution_df` displays distributions by class.
 * `schema.get_routing_matrix_df` display routing by class 
+* **BREAKING**: `engine.multiple_replications` now returns a tuple `pd.DataFrame`, `pd.DataFrame` for normal results and transfers between nodes (blocking)
+* `engine.CiwConverter` now handles finite queue capacities
+* `ui.py` module now renders options to toggle queue capacities between infinite and finite.
+* `results.py` has two new functions to handle results for transfers between nodes: `summarise_transfer_results`, `tidy_transfer_to_wide_format`
 
 ## 0.11.0 (2026-06-19)
 
