@@ -798,11 +798,11 @@ class ProcessModel(BaseModel):
             if is_blocking and probability_label is None:
                 lines.append(f"    {source_id} ==> {target_id}")
             elif is_blocking:
-                lines.append(f"    {source_id} ==>|"{probability_label}"| {target_id}")
+                lines.append(f'    {source_id} ==>|"{probability_label}"| {target_id}')
             elif probability_label is None:
                 lines.append(f"    {source_id} --> {target_id}")
             else:
-                lines.append(f"    {source_id} -->|"{probability_label}"| {target_id}")
+                lines.append(f'   {source_id} -->|"{probability_label}"| {target_id}')
 
         #lines.append("```")
         return "\n".join(lines)
