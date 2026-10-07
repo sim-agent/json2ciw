@@ -787,14 +787,22 @@ class ProcessModel(BaseModel):
                 and transition.target in blocking_names
             )
 
+            # Fix v1.0.0 handle () or [] etc in node names 
+            if probability_label is not None:
+                # escape any literal quotes, then wrap in Mermaid-safe quotes
+                probability_label = (
+                    probability_label.replace('"', "#quot;")
+                )
+
+            # Fix v1.0.0 quotes "" around labels to handle [], () etc.
             if is_blocking and probability_label is None:
                 lines.append(f"    {source_id} ==> {target_id}")
             elif is_blocking:
-                lines.append(f"    {source_id} ==>|{probability_label}| {target_id}")
+                lines.append(f"    {source_id} ==>|"{probability_label}"| {target_id}")
             elif probability_label is None:
                 lines.append(f"    {source_id} --> {target_id}")
             else:
-                lines.append(f"    {source_id} -->|{probability_label}| {target_id}")
+                lines.append(f"    {source_id} -->|"{probability_label}"| {target_id}")
 
         #lines.append("```")
         return "\n".join(lines)
