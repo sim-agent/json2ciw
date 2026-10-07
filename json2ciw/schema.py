@@ -8,6 +8,7 @@ Mermaid-based views of the model structure.
 from collections import defaultdict
 from pathlib import Path
 from typing import Literal, Self, TypeAlias
+import re
 
 import pandas as pd
 from IPython.display import Markdown, display
@@ -641,10 +642,12 @@ class ProcessModel(BaseModel):
             Returns
             -------
             str
-                Sanitised node identifier with spaces and hyphens replaced
-                by underscores.
+                Sanitised node identifier containing only alphanumeric
+                characters and underscores, safe for use in Mermaid node
+                definitions, edges, and class statements.
             """
-            return name.replace(" ", "_").replace("-", "_")
+            node_id = name.replace(" ", "_").replace("-", "_")
+            return re.sub(r"[_()\[\]{}<>]+", "_", node_id).strip("_")
 
         entry_activities = [a for a in self.activities if a.arrival_distribution]
 
